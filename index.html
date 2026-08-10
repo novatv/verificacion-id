@@ -110,7 +110,10 @@
     <h2 id="veredicto"></h2>
     <div class="datos" id="datos"></div>
     <div class="checks" id="checks"></div>
-    <div style="margin-top:12px;"><button class="btn secundario" onclick="reinicia()">Nueva verificación</button></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn" onclick="cotejaOtraCara()">🔁 Escanear la otra cara (cotejo)</button>
+      <button class="btn secundario" onclick="reinicia(true)">Nueva verificación</button>
+    </div>
   </div>
 </div>
 
@@ -257,17 +260,58 @@ function parseaDocumento(texto){
   return parseaMRZ(texto) || parseaFrontal(texto);
 }
 
+/* ================= Autenticidad ================= */
+let ultimoFrontal=null, ultimoMRZ=null;
+function analizaAutenticidad(r, caducado){
+  const pruebas=[]; // [ok|false|null, texto]
+  if(r.modo==='frontal'){
+    pruebas.push([r.letraOk, 'Letra de control del número de DNI (mod 23)']);
+  }else{
+    pruebas.push([r.okNac, 'Dígito de control MRZ: fecha de nacimiento']);
+    pruebas.push([r.okNum, 'Dígito de control MRZ: número de documento']);
+    pruebas.push([r.okExp, 'Dígito de control MRZ: caducidad']);
+  }
+  // Coherencia de fechas
+  if(r.fnac && r.fexp) pruebas.push([r.fexp > r.fnac, 'Coherencia de fechas (validez posterior al nacimiento)']);
+  if(r.fexp){
+    const anos=(r.fexp - new Date())/31557600000;
+    pruebas.push([anos < 15 || r.fexp.getFullYear()>=9999, 'Plazo de validez plausible']);
+  }
+  if(r.fnac) pruebas.push([edadDe(r.fnac)<=110 && edadDe(r.fnac)>=0, 'Edad dentro de rango humano']);
+  if(caducado!==null) pruebas.push([caducado===false, 'Documento en vigor']);
+  // Cotejo entre las dos caras (si se han escaneado ambas)
+  const otra = r.modo==='frontal' ? ultimoMRZ : ultimoFrontal;
+  let cotejo=null;
+  if(otra){
+    const num1=(r.numDoc||'').replace(/[^A-Z0-9]/g,''), num2=(otra.numDoc||'').replace(/[^A-Z0-9]/g,'');
+    const numOk = num1 && num2 && (num1.includes(num2)||num2.includes(num1));
+    const nacOk = r.fnac && otra.fnac && +r.fnac===+otra.fnac;
+    cotejo = !!(numOk || nacOk) && !(r.fnac && otra.fnac && +r.fnac!==+otra.fnac);
+    pruebas.push([cotejo, 'Cotejo entre las dos caras del documento (número y nacimiento coinciden)']);
+  }
+  const falladas = pruebas.filter(p=>p[0]===false).length;
+  const superadas = pruebas.filter(p=>p[0]===true).length;
+  let veredicto, clase;
+  if(falladas>0){ veredicto='⚠️ INDICIOS DE DOCUMENTO FALSO O MANIPULADO — '+falladas+' comprobación(es) fallida(s)'; clase='no'; }
+  else { veredicto='Sin indicios de falsificación · '+superadas+'/'+pruebas.length+' comprobaciones superadas'+(cotejo===true?' (incluido cotejo de ambas caras)':''); clase='si'; }
+  return {pruebas, veredicto, clase, cotejo, falladas};
+}
+
 /* ================= Resultado ================= */
 function muestraResultado(r){
   paraCamara();
+  if(r.modo==='frontal') ultimoFrontal=r; else ultimoMRZ=r;
   const edad = r.fnac ? edadDe(r.fnac) : null;
   const caducado = r.fexp ? r.fexp < new Date() : null;
-  const apto = edad !== null && edad >= EDAD_MINIMA && caducado !== true;
+  const aut = analizaAutenticidad(r, caducado);
+  const apto = edad !== null && edad >= EDAD_MINIMA && caducado !== true && aut.falladas===0;
   const res=document.getElementById('resultado');
   res.className='resultado '+(apto?'apto':'noapto');
   document.getElementById('veredicto').textContent = apto
     ? '✔ APTO — mayor de '+EDAD_MINIMA+' años'
-    : '✖ NO APTO' + (edad!==null && edad<EDAD_MINIMA ? ' — menor de '+EDAD_MINIMA : caducado ? ' — documento caducado' : '');
+    : '✖ NO APTO' + (edad!==null && edad<EDAD_MINIMA ? ' — menor de '+EDAD_MINIMA
+        : caducado ? ' — documento caducado'
+        : aut.falladas>0 ? ' — posible documento falso' : '');
   const fmt=d=>d?d.toLocaleDateString('es-ES'):'—';
   document.getElementById('datos').innerHTML =
     dato('Tipo',r.tipo)+dato('Titular',r.nombre||'—')+
@@ -275,27 +319,34 @@ function muestraResultado(r){
     dato('Nacimiento',fmt(r.fnac))+dato('Edad',edad!==null?edad+' años':'—')+
     (r.sexo?dato('Sexo',r.sexo==='F'?'Mujer':r.sexo==='M'?'Hombre':'—'):'')+
     dato('Nº documento',r.numDoc||'—')+dato('Caducidad',fmt(r.fexp));
-  let checks='';
-  if(r.modo==='frontal'){
-    checks += (r.letraOk===null?chkN('Letra de control del DNI no visible en la foto')
-              :chk(r.letraOk,'Letra de control del DNI válida (mod 23)'));
-    checks += (r.fexp?chk(caducado===false,'Documento en vigor'):chkN('Fecha de validez no detectada'));
-  }else{
-    checks += chk(r.okNac,'Dígito de control de la fecha de nacimiento')+
-              chk(r.okNum,'Dígito de control del número de documento')+
-              chk(r.okExp,'Dígito de control de la caducidad')+
-              chk(caducado===false,'Documento en vigor');
+  let checks='<div style="margin-top:10px;font-weight:700;font-size:14px;" class="'+aut.clase+'">🔍 Autenticidad: '+aut.veredicto+'</div>';
+  for(const [ok,txt] of aut.pruebas){
+    checks += ok===null ? chkN(txt+' — no comprobable en esta foto') : chk(ok,txt);
   }
   checks += chk(edad!==null&&edad>=EDAD_MINIMA,'Edad mínima ('+EDAD_MINIMA+'+)');
+  if(aut.cotejo===null){
+    checks += chkN('Consejo: escanea también la otra cara del documento para cotejar ambas — sube mucho la fiabilidad');
+  }
+  checks += chkN('Nota: hologramas, tintas y material solo se pueden certificar con el chip NFC del documento; esta verificación cubre todo lo comprobable desde una foto');
   document.getElementById('checks').innerHTML=checks;
   res.scrollIntoView({behavior:'smooth'});
 }
 const dato=(k,v)=>'<div class="dato"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';
 const chk=(ok,txt)=>'<div class="'+(ok?'si':'no')+'">'+(ok?'✔':'✖')+' '+txt+'</div>';
 const chkN=txt=>'<div class="neutro">• '+txt+'</div>';
-function reinicia(){
+function reinicia(borraTodo){
+  if(borraTodo){ ultimoFrontal=null; ultimoMRZ=null; }
   document.getElementById('resultado').className='resultado';
   estado('cam','','Pulsa «Iniciar cámara» para una nueva verificación.');
+}
+function cotejaOtraCara(){
+  // Cambia al lado contrario del último escaneado y abre la cámara
+  const nuevo = lado==='frontal' ? 'mrz' : 'frontal';
+  document.querySelector('input[name=lado][value="'+nuevo+'"]').checked=true;
+  cambiaLado();
+  document.getElementById('resultado').className='resultado';
+  cambiaTab('cam');
+  iniciaCamara();
 }
 
 /* ================= OCR ================= */
