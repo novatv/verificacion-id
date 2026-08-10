@@ -8,12 +8,15 @@
   :root{--rojo:#e30613;--verde:#2e9e5b;--amarillo:#ffd200;--fondo:#141414;--panel:#1f1f1f;--borde:#333;--texto:#eee;}
   *{margin:0;padding:0;box-sizing:border-box;}
   body{font-family:'Segoe UI',Arial,sans-serif;background:var(--fondo);color:var(--texto);min-height:100vh;}
-  header{background:var(--rojo);padding:14px 18px;display:flex;align-items:center;gap:12px;}
+  header{background:var(--rojo);padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
   header h1{font-size:20px;color:#fff;font-style:italic;}
   header h1 span{color:var(--amarillo);}
   header .sub{margin-left:auto;font-size:12px;color:#ffd9db;}
   .wrap{max-width:860px;margin:18px auto;padding:0 16px;}
   .privacidad{background:#10281a;border:1px solid #1d4d31;color:#9fdcb5;border-radius:6px;padding:10px 14px;font-size:13px;margin-bottom:14px;}
+  .lado{display:flex;gap:14px;background:var(--panel);border:1px solid var(--borde);border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:14px;flex-wrap:wrap;align-items:center;}
+  .lado b{color:var(--amarillo);}
+  .lado label{display:flex;align-items:center;gap:6px;cursor:pointer;}
   .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
   .tabs button{background:var(--panel);color:#bbb;border:1px solid var(--borde);padding:10px 16px;border-radius:6px;font-size:14px;cursor:pointer;}
   .tabs button.activo{background:var(--rojo);border-color:var(--rojo);color:#fff;font-weight:600;}
@@ -21,11 +24,12 @@
   .oculto{display:none;}
   video{width:100%;border-radius:6px;background:#000;max-height:420px;object-fit:cover;}
   .guia{position:relative;}
-  .guia .marco{position:absolute;left:4%;right:4%;bottom:6%;height:26%;border:2px dashed var(--amarillo);border-radius:6px;pointer-events:none;
-    box-shadow:0 0 0 2000px rgba(0,0,0,.25);}
-  .guia .marco small{position:absolute;top:-22px;left:0;color:var(--amarillo);font-size:12px;background:rgba(0,0,0,.6);padding:2px 8px;border-radius:4px;}
+  .guia .marco{position:absolute;pointer-events:none;border:2px dashed var(--amarillo);border-radius:6px;box-shadow:0 0 0 2000px rgba(0,0,0,.25);}
+  .guia .marco.frontal{left:10%;right:10%;top:12%;bottom:12%;}
+  .guia .marco.mrz{left:4%;right:4%;bottom:6%;height:26%;top:auto;}
+  .guia .marco small{position:absolute;top:-22px;left:0;color:var(--amarillo);font-size:12px;background:rgba(0,0,0,.6);padding:2px 8px;border-radius:4px;white-space:nowrap;}
   .estado{display:flex;align-items:center;gap:10px;font-size:14px;margin-top:12px;color:#bbb;}
-  .punto{width:10px;height:10px;border-radius:50%;background:#666;}
+  .punto{width:10px;height:10px;border-radius:50%;background:#666;flex-shrink:0;}
   .punto.escaneando{background:var(--amarillo);animation:parp 1s infinite;}
   .punto.ok{background:var(--verde);} .punto.mal{background:var(--rojo);}
   @keyframes parp{50%{opacity:.3;}}
@@ -33,7 +37,6 @@
   .btn.secundario{background:#3a3a3a;}
   textarea{width:100%;background:#111;color:#8fd;border:1px solid var(--borde);border-radius:6px;padding:10px;font-family:monospace;font-size:14px;min-height:90px;letter-spacing:1px;}
   input[type=file]{color:#bbb;}
-  /* resultado */
   .resultado{border-radius:8px;padding:18px;margin-top:4px;display:none;}
   .resultado.apto{display:block;background:#10281a;border:2px solid var(--verde);}
   .resultado.noapto{display:block;background:#2b1113;border:2px solid var(--rojo);}
@@ -44,7 +47,7 @@
   .dato .k{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;}
   .dato .v{font-size:16px;font-weight:600;margin-top:2px;}
   .checks{margin-top:12px;font-size:13px;line-height:1.9;}
-  .checks .si{color:#5fd68d;} .checks .no{color:#ff6b74;}
+  .checks .si{color:#5fd68d;} .checks .no{color:#ff6b74;} .checks .neutro{color:#999;}
   footer{color:#666;font-size:12px;text-align:center;padding:20px;}
   canvas{display:none;}
 </style>
@@ -58,19 +61,25 @@
 <div class="wrap">
   <div class="privacidad">🔒 <b>Privacidad total:</b> la lectura se hace con OCR dentro de tu navegador. Ninguna imagen ni dato del documento se envía a ningún servidor.</div>
 
+  <div class="lado">
+    <b>Lado del documento:</b>
+    <label><input type="radio" name="lado" value="frontal" checked onchange="cambiaLado()"> Parte de adelante (DNI)</label>
+    <label><input type="radio" name="lado" value="mrz" onchange="cambiaLado()"> Trasera / pasaporte (líneas &lt;&lt;&lt;)</label>
+  </div>
+
   <div class="tabs">
     <button id="tabCam" class="activo" onclick="cambiaTab('cam')">📷 Cámara en vivo</button>
     <button id="tabFoto" onclick="cambiaTab('foto')">🖼 Subir foto</button>
-    <button id="tabManual" onclick="cambiaTab('manual')">⌨ Pegar MRZ</button>
+    <button id="tabManual" onclick="cambiaTab('manual')">⌨ Pegar texto</button>
   </div>
 
   <!-- Cámara -->
   <div class="panel" id="panelCam">
     <div class="guia">
       <video id="video" autoplay playsinline muted></video>
-      <div class="marco"><small>Encaja aquí las líneas &lt;&lt;&lt; del documento</small></div>
+      <div class="marco frontal" id="marco"><small id="marcoTxt">Encaja aquí la parte de adelante del DNI</small></div>
     </div>
-    <div class="estado"><span class="punto" id="puntoCam"></span><span id="estadoCam">Pulsa «Iniciar cámara» y apunta a la zona de letras y &lt;&lt;&lt; del DNI o pasaporte.</span></div>
+    <div class="estado"><span class="punto" id="puntoCam"></span><span id="estadoCam">Pulsa «Iniciar cámara» y encaja el documento en el marco.</span></div>
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn" id="btnCam" onclick="iniciaCamara()">Iniciar cámara</button>
       <button class="btn secundario" onclick="paraCamara()">Parar</button>
@@ -79,16 +88,15 @@
 
   <!-- Foto -->
   <div class="panel oculto" id="panelFoto">
-    <p style="font-size:13px;color:#bbb;margin-bottom:10px;">Sube una foto nítida del documento donde se lean bien las líneas de la zona MRZ (las que tienen <b>&lt;&lt;&lt;</b>).</p>
+    <p style="font-size:13px;color:#bbb;margin-bottom:10px;">Sube una foto nítida y recta del documento, con buena luz y sin reflejos.</p>
     <input type="file" id="fotoInput" accept="image/*">
     <div class="estado"><span class="punto" id="puntoFoto"></span><span id="estadoFoto"></span></div>
   </div>
 
   <!-- Manual -->
   <div class="panel oculto" id="panelManual">
-    <p style="font-size:13px;color:#bbb;margin-bottom:10px;">Pega las 2 o 3 líneas MRZ del documento (para pruebas puedes usar el especimen oficial ICAO):</p>
-    <textarea id="mrzManual" placeholder="P&lt;UTOERIKSSON&lt;&lt;ANNA&lt;MARIA&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
-L898902C36UTO7408122F1204159ZE184226B&lt;&lt;&lt;&lt;&lt;10"></textarea>
+    <p style="font-size:13px;color:#bbb;margin-bottom:10px;">Pega el texto del documento (frontal) o las líneas MRZ (trasera/pasaporte):</p>
+    <textarea id="mrzManual" placeholder="DNI 12345678Z&#10;FECHA DE NACIMIENTO 12 06 1985&#10;VALIDEZ 01 01 2030"></textarea>
     <div style="margin-top:10px;"><button class="btn" onclick="verificaManual()">Verificar</button></div>
   </div>
 
@@ -101,7 +109,7 @@ L898902C36UTO7408122F1204159ZE184226B&lt;&lt;&lt;&lt;&lt;10"></textarea>
   </div>
 </div>
 
-<footer>VerificaciónID · OCR local con Tesseract.js · Valida dígitos de control MRZ (ICAO 9303) · Edad mínima configurable (<span id="edadMinTxt"></span>+)</footer>
+<footer>VerificaciónID · OCR local con Tesseract.js · Frontal DNI (letra de control mod-23) y MRZ (ICAO 9303) · Edad mínima <span id="edadMinTxt"></span>+</footer>
 <canvas id="lienzo"></canvas>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -109,8 +117,72 @@ L898902C36UTO7408122F1204159ZE184226B&lt;&lt;&lt;&lt;&lt;10"></textarea>
 /* ================= Configuración ================= */
 const EDAD_MINIMA = 18; // cámbialo a 21 para el estándar Kinky
 document.getElementById('edadMinTxt').textContent = EDAD_MINIMA;
+let lado = 'frontal';
 
-/* ================= Utilidades MRZ (ICAO 9303) ================= */
+/* ================= Utilidades comunes ================= */
+function edadDe(f){
+  const hoy=new Date(); let e=hoy.getFullYear()-f.getFullYear();
+  const m=hoy.getMonth()-f.getMonth();
+  if(m<0||(m===0&&hoy.getDate()<f.getDate())) e--;
+  return e;
+}
+const PAISES={ESP:'España',UTO:'Utopía (especimen)',NLD:'Países Bajos',BEL:'Bélgica',FRA:'Francia',PRT:'Portugal',ITA:'Italia',DEU:'Alemania',ROU:'Rumanía',COL:'Colombia',VEN:'Venezuela',ARG:'Argentina',BRA:'Brasil',DOM:'Rep. Dominicana',MAR:'Marruecos',CHN:'China',UKR:'Ucrania',RUS:'Rusia',GBR:'Reino Unido',USA:'EE.UU.',ECU:'Ecuador',PER:'Perú',PRY:'Paraguay',BOL:'Bolivia',CUB:'Cuba',HND:'Honduras',NIC:'Nicaragua'};
+
+/* ================= Parte FRONTAL del DNI ================= */
+const LETRAS_DNI='TRWAGMYFPDXBNJZSQVHLCKE';
+function parseaFrontal(texto){
+  const t=texto.toUpperCase();
+  // Fechas dd mm aaaa (con espacio, punto, guion o barra)
+  const fechas=[];
+  const reF=/(\d{2})[\s.\-\/]{1,2}(\d{2})[\s.\-\/]{1,2}(\d{4})/g;
+  let m;
+  while((m=reF.exec(t))){
+    const d=+m[1],mes=+m[2],a=+m[3];
+    if(d>=1&&d<=31&&mes>=1&&mes<=12&&a>=1900&&a<=2100){
+      const f=new Date(a,mes-1,d);
+      if(!fechas.some(x=>+x===+f)) fechas.push(f);
+    }
+  }
+  // Número de DNI + letra (valida mod 23) o NIE X/Y/Z
+  let numDoc='', letraOk=null;
+  const reD=/\b(\d{8})[\s\-]?([A-Z])\b/g;
+  while((m=reD.exec(t))){
+    const esperada=LETRAS_DNI[+m[1]%23];
+    numDoc=m[1]+m[2];
+    letraOk=(m[2]===esperada);
+    if(letraOk) break; // nos quedamos con el que valida
+  }
+  if(!numDoc){
+    const reN=/\b([XYZ])[\s\-]?(\d{7})[\s\-]?([A-Z])\b/;
+    const n=t.match(reN);
+    if(n){
+      const num=({X:'0',Y:'1',Z:'2'})[n[1]]+n[2];
+      numDoc=n[1]+n[2]+n[3];
+      letraOk=(n[3]===LETRAS_DNI[+num%23]);
+    }
+  }
+  if(fechas.length===0 && !numDoc) return null;
+  // La más antigua = nacimiento; la más futura = validez (si hay al menos 2)
+  fechas.sort((a,b)=>a-b);
+  const hoy=new Date();
+  let fnac=null, fexp=null;
+  if(fechas.length>=2){ fnac=fechas[0]; fexp=fechas[fechas.length-1]; }
+  else if(fechas.length===1){ if(fechas[0]<hoy) fnac=fechas[0]; else fexp=fechas[0]; }
+  if(fnac && edadDe(fnac)>110) fnac=null;
+  if(fnac && fexp && +fnac===+fexp) fexp=null;
+  if(!fnac) return null; // sin nacimiento no hay veredicto
+  // Nombre (si aparecen las etiquetas del DNI)
+  let nombre='';
+  const ap=t.match(/APELLIDOS?\s*\n?\s*([A-ZÁÉÍÓÚÑ ]{2,40})/);
+  const no=t.match(/NOMBRE\s*\n?\s*([A-ZÁÉÍÓÚÑ ]{2,40})/);
+  if(no) nombre=no[1].trim();
+  if(ap) nombre=(nombre?nombre+' ':'')+ap[1].trim();
+  const esDni=/DNI|DOCUMENTO NACIONAL|ESPAÑA|ESPANA/.test(t);
+  return {modo:'frontal', tipo:esDni?'DNI (frontal)':'Documento (frontal)', nombre,
+    numDoc, nacionalidad:esDni?'ESP':'', fnac, fexp, sexo:'', letraOk};
+}
+
+/* ================= MRZ (ICAO 9303) ================= */
 const VALOR = c => c === '<' ? 0 : (c >= '0' && c <= '9') ? +c : c.charCodeAt(0) - 55;
 function digitoControl(s){
   const pesos=[7,3,1]; let suma=0;
@@ -127,31 +199,16 @@ function fechaMRZ(yymmdd, esNacimiento){
   else { siglo = (yy < 70) ? 2000 : 1900; }
   return new Date(siglo+yy, mm-1, dd);
 }
-function edadDe(f){
-  const hoy=new Date(); let e=hoy.getFullYear()-f.getFullYear();
-  const m=hoy.getMonth()-f.getMonth();
-  if(m<0||(m===0&&hoy.getDate()<f.getDate())) e--;
-  return e;
-}
-const PAISES={ESP:'España',UTO:'Utopía (especimen)',NLD:'Países Bajos',BEL:'Bélgica',FRA:'Francia',PRT:'Portugal',ITA:'Italia',DEU:'Alemania',ROU:'Rumanía',COL:'Colombia',VEN:'Venezuela',ARG:'Argentina',BRA:'Brasil',DOM:'Rep. Dominicana',MAR:'Marruecos',CHN:'China',UKR:'Ucrania',RUS:'Rusia',GBR:'Reino Unido',USA:'EE.UU.',ECU:'Ecuador',PER:'Perú',PRY:'Paraguay',BOL:'Bolivia',CUB:'Cuba',HND:'Honduras',NIC:'Nicaragua'};
-
-function limpiaLinea(l){
-  return l.toUpperCase().replace(/[«]/g,'<<').replace(/[^A-Z0-9<]/g,'');
-}
-
-/* Analiza un bloque de texto buscando un MRZ TD3 (pasaporte 2x44) o TD1 (DNI 3x30) */
+function limpiaLinea(l){ return l.toUpperCase().replace(/[«]/g,'<<').replace(/[^A-Z0-9<]/g,''); }
 function parseaMRZ(texto){
   const lineas = texto.split(/\n+/).map(limpiaLinea).filter(l=>l.length>=25 && l.includes('<'));
-  // TD3: pasaporte
   for(let i=0;i<lineas.length-1;i++){
     const l1=lineas[i], l2=lineas[i+1];
     if(l1.startsWith('P') && l2.length>=44){
-      const L2=l2.padEnd(44,'<').slice(0,44);
-      const r=parseaTD3(l1.padEnd(44,'<').slice(0,44), L2);
+      const r=parseaTD3(l1.padEnd(44,'<').slice(0,44), l2.padEnd(44,'<').slice(0,44));
       if(r) return r;
     }
   }
-  // TD1: DNI/tarjeta id — 3 líneas de 30
   for(let i=0;i<lineas.length-2;i++){
     const a=lineas[i].padEnd(30,'<').slice(0,30),
           b=lineas[i+1].padEnd(30,'<').slice(0,30),
@@ -169,14 +226,12 @@ function parseaTD3(l1,l2){
   const fnac=l2.slice(13,19), cNac=l2[19];
   const sexo=l2[20];
   const fexp=l2.slice(21,27), cExp=l2[27];
-  const okNum=digitoControl(numDoc)===cNum;
   const okNac=digitoControl(fnac)===cNac;
-  const okExp=digitoControl(fexp)===cExp;
-  if(!okNac) return null; // sin fecha de nacimiento fiable no hay veredicto
+  if(!okNac) return null;
   const nombre=l1.slice(5).split('<<').map(p=>p.replace(/</g,' ').trim()).filter(Boolean);
-  return {tipo:'Pasaporte', emisor:l1.slice(2,5), nombre:(nombre[1]?nombre[1]+' ':'')+(nombre[0]||''),
+  return {modo:'mrz', tipo:'Pasaporte', nombre:(nombre[1]?nombre[1]+' ':'')+(nombre[0]||''),
     numDoc:numDoc.replace(/</g,''), nacionalidad:nacio, fnac:fechaMRZ(fnac,true), sexo,
-    fexp:fechaMRZ(fexp,false), okNum, okNac, okExp};
+    fexp:fechaMRZ(fexp,false), okNum:digitoControl(numDoc)===cNum, okNac, okExp:digitoControl(fexp)===cExp};
 }
 function parseaTD1(a,b,c){
   const numDoc=a.slice(5,14), cNum=a[14];
@@ -184,14 +239,17 @@ function parseaTD1(a,b,c){
   const sexo=b[7];
   const fexp=b.slice(8,14), cExp=b[14];
   const nacio=b.slice(15,18);
-  const okNum=digitoControl(numDoc)===cNum;
   const okNac=digitoControl(fnac)===cNac;
-  const okExp=digitoControl(fexp)===cExp;
   if(!okNac) return null;
   const nombre=c.split('<<').map(p=>p.replace(/</g,' ').trim()).filter(Boolean);
-  return {tipo:'Documento de identidad', emisor:a.slice(2,5), nombre:(nombre[1]?nombre[1]+' ':'')+(nombre[0]||''),
+  return {modo:'mrz', tipo:'Documento de identidad', nombre:(nombre[1]?nombre[1]+' ':'')+(nombre[0]||''),
     numDoc:numDoc.replace(/</g,''), nacionalidad:nacio, fnac:fechaMRZ(fnac,true), sexo,
-    fexp:fechaMRZ(fexp,false), okNum, okNac, okExp};
+    fexp:fechaMRZ(fexp,false), okNum:digitoControl(numDoc)===cNum, okNac, okExp:digitoControl(fexp)===cExp};
+}
+
+function parseaDocumento(texto){
+  if(lado==='frontal'){ return parseaFrontal(texto) || parseaMRZ(texto); }
+  return parseaMRZ(texto) || parseaFrontal(texto);
 }
 
 /* ================= Resultado ================= */
@@ -199,7 +257,7 @@ function muestraResultado(r){
   paraCamara();
   const edad = r.fnac ? edadDe(r.fnac) : null;
   const caducado = r.fexp ? r.fexp < new Date() : null;
-  const apto = edad !== null && edad >= EDAD_MINIMA && r.okNac && caducado === false;
+  const apto = edad !== null && edad >= EDAD_MINIMA && caducado !== true;
   const res=document.getElementById('resultado');
   res.className='resultado '+(apto?'apto':'noapto');
   document.getElementById('veredicto').textContent = apto
@@ -207,20 +265,29 @@ function muestraResultado(r){
     : '✖ NO APTO' + (edad!==null && edad<EDAD_MINIMA ? ' — menor de '+EDAD_MINIMA : caducado ? ' — documento caducado' : '');
   const fmt=d=>d?d.toLocaleDateString('es-ES'):'—';
   document.getElementById('datos').innerHTML =
-    dato('Tipo',r.tipo)+dato('Titular',r.nombre||'—')+dato('Nacionalidad',(PAISES[r.nacionalidad]||r.nacionalidad))+
+    dato('Tipo',r.tipo)+dato('Titular',r.nombre||'—')+
+    dato('Nacionalidad',r.nacionalidad?(PAISES[r.nacionalidad]||r.nacionalidad):'—')+
     dato('Nacimiento',fmt(r.fnac))+dato('Edad',edad!==null?edad+' años':'—')+
-    dato('Sexo',r.sexo==='F'?'Mujer':r.sexo==='M'?'Hombre':'—')+
-    dato('Nº documento',r.numDoc)+dato('Caducidad',fmt(r.fexp));
-  document.getElementById('checks').innerHTML =
-    chk(r.okNac,'Dígito de control de la fecha de nacimiento')+
-    chk(r.okNum,'Dígito de control del número de documento')+
-    chk(r.okExp,'Dígito de control de la caducidad')+
-    chk(caducado===false,'Documento en vigor')+
-    chk(edad!==null&&edad>=EDAD_MINIMA,'Edad mínima ('+EDAD_MINIMA+'+)');
+    (r.sexo?dato('Sexo',r.sexo==='F'?'Mujer':r.sexo==='M'?'Hombre':'—'):'')+
+    dato('Nº documento',r.numDoc||'—')+dato('Caducidad',fmt(r.fexp));
+  let checks='';
+  if(r.modo==='frontal'){
+    checks += (r.letraOk===null?chkN('Letra de control del DNI no visible en la foto')
+              :chk(r.letraOk,'Letra de control del DNI válida (mod 23)'));
+    checks += (r.fexp?chk(caducado===false,'Documento en vigor'):chkN('Fecha de validez no detectada'));
+  }else{
+    checks += chk(r.okNac,'Dígito de control de la fecha de nacimiento')+
+              chk(r.okNum,'Dígito de control del número de documento')+
+              chk(r.okExp,'Dígito de control de la caducidad')+
+              chk(caducado===false,'Documento en vigor');
+  }
+  checks += chk(edad!==null&&edad>=EDAD_MINIMA,'Edad mínima ('+EDAD_MINIMA+'+)');
+  document.getElementById('checks').innerHTML=checks;
   res.scrollIntoView({behavior:'smooth'});
 }
 const dato=(k,v)=>'<div class="dato"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';
 const chk=(ok,txt)=>'<div class="'+(ok?'si':'no')+'">'+(ok?'✔':'✖')+' '+txt+'</div>';
+const chkN=txt=>'<div class="neutro">• '+txt+'</div>';
 function reinicia(){
   document.getElementById('resultado').className='resultado';
   estado('cam','','Pulsa «Iniciar cámara» para una nueva verificación.');
@@ -231,15 +298,28 @@ let worker=null, escaneando=false, stream=null;
 async function getWorker(){
   if(worker) return worker;
   estado('cam','escaneando','Cargando motor OCR…');
-  worker = await Tesseract.createWorker('eng');
-  await worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<'});
+  worker = await Tesseract.createWorker('spa');
   return worker;
+}
+async function configuraWorker(){
+  const w=await getWorker();
+  await w.setParameters({tessedit_char_whitelist: lado==='mrz' ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<' : ''});
+  return w;
 }
 function estado(cual,clase,txt){
   const p=document.getElementById(cual==='cam'?'puntoCam':'puntoFoto');
   const e=document.getElementById(cual==='cam'?'estadoCam':'estadoFoto');
   if(p) p.className='punto '+clase;
   if(e) e.textContent=txt;
+}
+function cambiaLado(){
+  lado=document.querySelector('input[name=lado]:checked').value;
+  const marco=document.getElementById('marco');
+  marco.className='marco '+(lado==='frontal'?'frontal':'mrz');
+  document.getElementById('marcoTxt').textContent = lado==='frontal'
+    ? 'Encaja aquí la parte de adelante del DNI'
+    : 'Encaja aquí las líneas <<< del documento';
+  if(worker) configuraWorker();
 }
 
 /* --- cámara en vivo --- */
@@ -249,9 +329,9 @@ async function iniciaCamara(){
   }catch(e){ estado('cam','mal','No se pudo abrir la cámara: '+e.message); return; }
   const v=document.getElementById('video');
   v.srcObject=stream;
-  await getWorker();
+  await configuraWorker();
   escaneando=true;
-  estado('cam','escaneando','Escaneando en tiempo real… encaja las líneas <<< en el marco amarillo.');
+  estado('cam','escaneando','Escaneando en tiempo real… mantén el documento quieto y bien iluminado.');
   buclOCR();
 }
 function paraCamara(){
@@ -263,15 +343,20 @@ async function buclOCR(){
   const v=document.getElementById('video'), cv=document.getElementById('lienzo');
   while(escaneando){
     if(v.videoWidth){
-      // recorta el tercio inferior (zona MRZ) y amplía
       const h=v.videoHeight, w=v.videoWidth;
-      cv.width=w*2; cv.height=Math.floor(h*0.35)*2;
       const ctx=cv.getContext('2d');
-      ctx.filter='grayscale(1) contrast(1.6)';
-      ctx.drawImage(v, 0, h*0.60, w, h*0.35, 0, 0, cv.width, cv.height);
+      if(lado==='mrz'){
+        cv.width=w*2; cv.height=Math.floor(h*0.35)*2;
+        ctx.filter='grayscale(1) contrast(1.6)';
+        ctx.drawImage(v, 0, h*0.60, w, h*0.35, 0, 0, cv.width, cv.height);
+      }else{
+        cv.width=Math.min(w*2,2600); cv.height=Math.round(cv.width*(h*0.80)/(w));
+        ctx.filter='grayscale(1) contrast(1.5)';
+        ctx.drawImage(v, w*0.05, h*0.10, w*0.90, h*0.80, 0, 0, cv.width, cv.height);
+      }
       try{
         const {data}=await worker.recognize(cv);
-        const r=parseaMRZ(data.text);
+        const r=parseaDocumento(data.text);
         if(r){ estado('cam','ok','¡Documento leído!'); muestraResultado(r); return; }
       }catch(e){/* siguiente frame */}
     }
@@ -283,33 +368,34 @@ async function buclOCR(){
 document.getElementById('fotoInput').addEventListener('change', async function(){
   const f=this.files[0]; if(!f) return;
   estado('foto','escaneando','Leyendo la imagen…');
-  await getWorker();
+  await configuraWorker();
   const img=new Image();
   img.onload=async ()=>{
-    const cv=document.getElementById('lienzo');
-    // pasada 1: imagen completa; pasada 2: mitad inferior ampliada
-    const zonas=[[0,0,img.width,img.height],[0,img.height*0.45,img.width,img.height*0.55]];
+    const c=document.getElementById('lienzo');
+    const zonas = lado==='mrz'
+      ? [[0,img.height*0.45,img.width,img.height*0.55],[0,0,img.width,img.height]]
+      : [[0,0,img.width,img.height]];
     for(const [sx,sy,sw,sh] of zonas){
-      cv.width=Math.min(sw*2,2600); cv.height=Math.round(cv.width*sh/sw);
-      const ctx=cv.getContext('2d');
-      ctx.filter='grayscale(1) contrast(1.6)';
-      ctx.drawImage(img,sx,sy,sw,sh,0,0,cv.width,cv.height);
+      c.width=Math.min(sw*2,2600); c.height=Math.round(c.width*sh/sw);
+      const ctx=c.getContext('2d');
+      ctx.filter='grayscale(1) contrast(1.5)';
+      ctx.drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
       try{
-        const {data}=await worker.recognize(cv);
-        const r=parseaMRZ(data.text);
+        const {data}=await worker.recognize(c);
+        const r=parseaDocumento(data.text);
         if(r){ estado('foto','ok','¡Documento leído!'); muestraResultado(r); return; }
       }catch(e){}
     }
-    estado('foto','mal','No se pudo leer la zona MRZ. Prueba con una foto más nítida y recta, con buena luz.');
+    estado('foto','mal','No se pudo leer el documento. Prueba con una foto más nítida, recta y con buena luz.');
   };
   img.src=URL.createObjectURL(f);
 });
 
 /* --- manual --- */
 function verificaManual(){
-  const r=parseaMRZ(document.getElementById('mrzManual').value);
+  const r=parseaDocumento(document.getElementById('mrzManual').value);
   if(r) muestraResultado(r);
-  else alert('No se reconoce un MRZ válido en el texto pegado.');
+  else alert('No se reconocen datos válidos en el texto pegado.');
 }
 
 /* --- pestañas --- */
