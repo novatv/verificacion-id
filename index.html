@@ -331,7 +331,10 @@ async function getWorker(){
 }
 async function configuraWorker(){
   const w=await getWorker();
-  await w.setParameters({tessedit_char_whitelist: lado==='mrz' ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<' : ''});
+  await w.setParameters({
+    tessedit_char_whitelist: lado==='mrz' ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<' : '',
+    tessedit_pageseg_mode: '3',
+  });
   return w;
 }
 function estado(cual,clase,txt){
@@ -393,30 +396,55 @@ async function buclOCR(){
 }
 
 /* --- foto subida --- */
+function binariza(ctx,w,h){
+  const d=ctx.getImageData(0,0,w,h);
+  const p=d.data; let suma=0;
+  for(let i=0;i<p.length;i+=4) suma+=p[i];
+  const umbral=(suma/(p.length/4))*0.88;
+  for(let i=0;i<p.length;i+=4){
+    const v=p[i]>umbral?255:0;
+    p[i]=p[i+1]=p[i+2]=v;
+  }
+  ctx.putImageData(d,0,0);
+}
 async function procesaFoto(f){
   if(!f) return;
   estado('foto','escaneando','Leyendo la imagen…');
-  await configuraWorker();
-  const img=new Image();
-  img.onload=async ()=>{
-    const c=document.getElementById('lienzo');
-    const zonas = lado==='mrz'
-      ? [[0,img.height*0.45,img.width,img.height*0.55],[0,0,img.width,img.height]]
-      : [[0,0,img.width,img.height]];
-    for(const [sx,sy,sw,sh] of zonas){
-      c.width=Math.min(sw*2,2600); c.height=Math.round(c.width*sh/sw);
-      const ctx=c.getContext('2d');
-      ctx.filter='grayscale(1) contrast(1.5)';
-      ctx.drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
-      try{
-        const {data}=await worker.recognize(c);
-        const r=parseaDocumento(data.text);
-        if(r){ estado('foto','ok','¡Documento leído!'); muestraResultado(r); return; }
-      }catch(e){}
-    }
-    estado('foto','mal','No se pudo leer el documento. Prueba con una foto más nítida, recta y con buena luz.');
-  };
-  img.src=URL.createObjectURL(f);
+  const w=await configuraWorker();
+  let img;
+  try{ img=await createImageBitmap(f,{imageOrientation:'from-image'}); }
+  catch(e){ img=await createImageBitmap(f); }
+  const c=document.getElementById('lienzo');
+  // Zonas a intentar según el lado
+  const zonas = lado==='mrz'
+    ? [[0,img.height*0.45,img.width,img.height*0.55],[0,0,img.width,img.height]]
+    : [[0,0,img.width,img.height],[img.width*0.05,img.height*0.30,img.width*0.90,img.height*0.65]];
+  // Pasadas: escala × preparado × modo de segmentación
+  const pasadas=[];
+  for(const z of zonas)
+    for(const prep of ['gris','bin'])
+      for(const psm of ['3','11'])
+        for(const escala of [2.4,3.2])
+          pasadas.push({z,prep,psm,escala});
+  let n=0;
+  for(const p of pasadas){
+    n++;
+    estado('foto','escaneando','Analizando… intento '+n+'/'+pasadas.length);
+    const [sx,sy,sw,sh]=p.z;
+    c.width=Math.min(Math.round(sw*p.escala),3400);
+    c.height=Math.round(c.width*sh/sw);
+    const ctx=c.getContext('2d',{willReadFrequently:true});
+    ctx.filter='grayscale(1) contrast(1.6)';
+    ctx.drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
+    if(p.prep==='bin') binariza(ctx,c.width,c.height);
+    try{
+      await w.setParameters({tessedit_pageseg_mode:p.psm});
+      const {data}=await w.recognize(c);
+      const r=parseaDocumento(data.text);
+      if(r){ estado('foto','ok','¡Documento leído!'); muestraResultado(r); return; }
+    }catch(e){}
+  }
+  estado('foto','mal','No se pudo leer el documento tras '+n+' intentos. Consejos: acerca más el carnet hasta que llene la foto, sin reflejos del flash, sobre fondo oscuro, y con las letras bien enfocadas.');
 }
 document.getElementById('fotoInput').addEventListener('change', function(){ procesaFoto(this.files[0]); this.value=''; });
 document.getElementById('fotoCaptura').addEventListener('change', function(){ procesaFoto(this.files[0]); this.value=''; });
