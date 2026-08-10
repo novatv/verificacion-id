@@ -110,10 +110,7 @@
     <h2 id="veredicto"></h2>
     <div class="datos" id="datos"></div>
     <div class="checks" id="checks"></div>
-    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn" onclick="cotejaOtraCara()">🔁 Escanear la otra cara (cotejo)</button>
-      <button class="btn secundario" onclick="reinicia(true)">Nueva verificación</button>
-    </div>
+    <div style="margin-top:12px;"><button class="btn secundario" onclick="reinicia()">Nueva verificación</button></div>
   </div>
 </div>
 
@@ -261,7 +258,6 @@ function parseaDocumento(texto){
 }
 
 /* ================= Autenticidad ================= */
-let ultimoFrontal=null, ultimoMRZ=null;
 function analizaAutenticidad(r, caducado){
   const pruebas=[]; // [ok|false|null, texto]
   if(r.modo==='frontal'){
@@ -279,28 +275,17 @@ function analizaAutenticidad(r, caducado){
   }
   if(r.fnac) pruebas.push([edadDe(r.fnac)<=110 && edadDe(r.fnac)>=0, 'Edad dentro de rango humano']);
   if(caducado!==null) pruebas.push([caducado===false, 'Documento en vigor']);
-  // Cotejo entre las dos caras (si se han escaneado ambas)
-  const otra = r.modo==='frontal' ? ultimoMRZ : ultimoFrontal;
-  let cotejo=null;
-  if(otra){
-    const num1=(r.numDoc||'').replace(/[^A-Z0-9]/g,''), num2=(otra.numDoc||'').replace(/[^A-Z0-9]/g,'');
-    const numOk = num1 && num2 && (num1.includes(num2)||num2.includes(num1));
-    const nacOk = r.fnac && otra.fnac && +r.fnac===+otra.fnac;
-    cotejo = !!(numOk || nacOk) && !(r.fnac && otra.fnac && +r.fnac!==+otra.fnac);
-    pruebas.push([cotejo, 'Cotejo entre las dos caras del documento (número y nacimiento coinciden)']);
-  }
   const falladas = pruebas.filter(p=>p[0]===false).length;
   const superadas = pruebas.filter(p=>p[0]===true).length;
   let veredicto, clase;
   if(falladas>0){ veredicto='⚠️ INDICIOS DE DOCUMENTO FALSO O MANIPULADO — '+falladas+' comprobación(es) fallida(s)'; clase='no'; }
-  else { veredicto='Sin indicios de falsificación · '+superadas+'/'+pruebas.length+' comprobaciones superadas'+(cotejo===true?' (incluido cotejo de ambas caras)':''); clase='si'; }
-  return {pruebas, veredicto, clase, cotejo, falladas};
+  else { veredicto='Sin indicios de falsificación · '+superadas+'/'+pruebas.length+' comprobaciones superadas'; clase='si'; }
+  return {pruebas, veredicto, clase, falladas};
 }
 
 /* ================= Resultado ================= */
 function muestraResultado(r){
   paraCamara();
-  if(r.modo==='frontal') ultimoFrontal=r; else ultimoMRZ=r;
   const edad = r.fnac ? edadDe(r.fnac) : null;
   const caducado = r.fexp ? r.fexp < new Date() : null;
   const aut = analizaAutenticidad(r, caducado);
@@ -324,9 +309,6 @@ function muestraResultado(r){
     checks += ok===null ? chkN(txt+' — no comprobable en esta foto') : chk(ok,txt);
   }
   checks += chk(edad!==null&&edad>=EDAD_MINIMA,'Edad mínima ('+EDAD_MINIMA+'+)');
-  if(aut.cotejo===null){
-    checks += chkN('Consejo: escanea también la otra cara del documento para cotejar ambas — sube mucho la fiabilidad');
-  }
   checks += chkN('Nota: hologramas, tintas y material solo se pueden certificar con el chip NFC del documento; esta verificación cubre todo lo comprobable desde una foto');
   document.getElementById('checks').innerHTML=checks;
   res.scrollIntoView({behavior:'smooth'});
@@ -334,19 +316,9 @@ function muestraResultado(r){
 const dato=(k,v)=>'<div class="dato"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';
 const chk=(ok,txt)=>'<div class="'+(ok?'si':'no')+'">'+(ok?'✔':'✖')+' '+txt+'</div>';
 const chkN=txt=>'<div class="neutro">• '+txt+'</div>';
-function reinicia(borraTodo){
-  if(borraTodo){ ultimoFrontal=null; ultimoMRZ=null; }
+function reinicia(){
   document.getElementById('resultado').className='resultado';
   estado('cam','','Pulsa «Iniciar cámara» para una nueva verificación.');
-}
-function cotejaOtraCara(){
-  // Cambia al lado contrario del último escaneado y abre la cámara
-  const nuevo = lado==='frontal' ? 'mrz' : 'frontal';
-  document.querySelector('input[name=lado][value="'+nuevo+'"]').checked=true;
-  cambiaLado();
-  document.getElementById('resultado').className='resultado';
-  cambiaTab('cam');
-  iniciaCamara();
 }
 
 /* ================= OCR ================= */
