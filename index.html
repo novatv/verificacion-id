@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verificación de identidad en tiempo real</title>
+<style>
+  :root{--rojo:#e30613;--verde:#2e9e5b;--amarillo:#ffd200;--fondo:#141414;--panel:#1f1f1f;--borde:#333;--texto:#eee;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:var(--fondo);color:var(--texto);min-height:100vh;}
+  header{background:var(--rojo);padding:14px 18px;display:flex;align-items:center;gap:12px;}
+  header h1{font-size:20px;color:#fff;font-style:italic;}
+  header h1 span{color:var(--amarillo);}
+  header .sub{margin-left:auto;font-size:12px;color:#ffd9db;}
+  .wrap{max-width:860px;margin:18px auto;padding:0 16px;}
+  .privacidad{background:#10281a;border:1px solid #1d4d31;color:#9fdcb5;border-radius:6px;padding:10px 14px;font-size:13px;margin-bottom:14px;}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+  .tabs button{background:var(--panel);color:#bbb;border:1px solid var(--borde);padding:10px 16px;border-radius:6px;font-size:14px;cursor:pointer;}
+  .tabs button.activo{background:var(--rojo);border-color:var(--rojo);color:#fff;font-weight:600;}
+  .panel{background:var(--panel);border:1px solid var(--borde);border-radius:8px;padding:16px;margin-bottom:14px;}
+  .oculto{display:none;}
+  video{width:100%;border-radius:6px;background:#000;max-height:420px;object-fit:cover;}
+  .guia{position:relative;}
+  .guia .marco{position:absolute;left:4%;right:4%;bottom:6%;height:26%;border:2px dashed var(--amarillo);border-radius:6px;pointer-events:none;
+    box-shadow:0 0 0 2000px rgba(0,0,0,.25);}
+  .guia .marco small{position:absolute;top:-22px;left:0;color:var(--amarillo);font-size:12px;background:rgba(0,0,0,.6);padding:2px 8px;border-radius:4px;}
+  .estado{display:flex;align-items:center;gap:10px;font-size:14px;margin-top:12px;color:#bbb;}
+  .punto{width:10px;height:10px;border-radius:50%;background:#666;}
+  .punto.escaneando{background:var(--amarillo);animation:parp 1s infinite;}
+  .punto.ok{background:var(--verde);} .punto.mal{background:var(--rojo);}
+  @keyframes parp{50%{opacity:.3;}}
+  .btn{background:var(--rojo);color:#fff;border:none;padding:11px 20px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;}
+  .btn.secundario{background:#3a3a3a;}
+  textarea{width:100%;background:#111;color:#8fd;border:1px solid var(--borde);border-radius:6px;padding:10px;font-family:monospace;font-size:14px;min-height:90px;letter-spacing:1px;}
+  input[type=file]{color:#bbb;}
+  /* resultado */
+  .resultado{border-radius:8px;padding:18px;margin-top:4px;display:none;}
+  .resultado.apto{display:block;background:#10281a;border:2px solid var(--verde);}
+  .resultado.noapto{display:block;background:#2b1113;border:2px solid var(--rojo);}
+  .resultado h2{font-size:22px;margin-bottom:10px;}
+  .apto h2{color:#5fd68d;} .noapto h2{color:#ff6b74;}
+  .datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:8px;}
+  .dato{background:rgba(255,255,255,.05);border-radius:6px;padding:10px;}
+  .dato .k{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;}
+  .dato .v{font-size:16px;font-weight:600;margin-top:2px;}
+  .checks{margin-top:12px;font-size:13px;line-height:1.9;}
+  .checks .si{color:#5fd68d;} .checks .no{color:#ff6b74;}
+  footer{color:#666;font-size:12px;text-align:center;padding:20px;}
+  canvas{display:none;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Verificación<span>ID</span></h1>
+  <div class="sub">Resultado en tiempo real · El documento no sale de tu dispositivo</div>
+</header>
+
+<div class="wrap">
+  <div class="privacidad">🔒 <b>Privacidad total:</b> la lectura se hace con OCR dentro de tu navegador. Ninguna imagen ni dato del documento se envía a ningún servidor.</div>
+
+  <div class="tabs">
+    <button id="tabCam" class="activo" onclick="cambiaTab('cam')">📷 Cámara en vivo</button>
+    <button id="tabFoto" onclick="cambiaTab('foto')">🖼 Subir foto</button>
+    <button id="tabManual" onclick="cambiaTab('manual')">⌨ Pegar MRZ</button>
+  </div>
+
+  <!-- Cámara -->
+  <div class="panel" id="panelCam">
+    <div class="guia">
+      <video id="video" autoplay playsinline muted></video>
+      <div class="marco"><small>Encaja aquí las líneas &lt;&lt;&lt; del documento</small></div>
+    </div>
+    <div class="estado"><span class="punto" id="puntoCam"></span><span id="estadoCam">Pulsa «Iniciar cámara» y apunta a la zona de letras y &lt;&lt;&lt; del DNI o pasaporte.</span></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn" id="btnCam" onclick="iniciaCamara()">Iniciar cámara</button>
+      <button class="btn secundario" onclick="paraCamara()">Parar</button>
+    </div>
+  </div>
+
+  <!-- Foto -->
+  <div class="panel oculto" id="panelFoto">
+    <p style="font-size:13px;color:#bbb;margin-bottom:10px;">Sube una foto nítida del documento donde se lean bien las líneas de la zona MRZ (las que tienen <b>&lt;&lt;&lt;</b>).</p>
+    <input type="file" id="fotoInput" accept="image/*">
+    <div class="estado"><span class="punto" id="puntoFoto"></span><span id="estadoFoto"></span></div>
+  </div>
+
+  <!-- Manual -->
+  <div class="panel oculto" id="panelManual">
+    <p style="font-size:13px;color:#bbb;margin-bottom:10px;">Pega las 2 o 3 líneas MRZ del documento (para pruebas puedes usar el especimen oficial ICAO):</p>
+    <textarea id="mrzManual" placeholder="P&lt;UTOERIKSSON&lt;&lt;ANNA&lt;MARIA&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+L898902C36UTO7408122F1204159ZE184226B&lt;&lt;&lt;&lt;&lt;10"></textarea>
+    <div style="margin-top:10px;"><button class="btn" onclick="verificaManual()">Verificar</button></div>
+  </div>
+
+  <!-- Resultado -->
+  <div class="resultado" id="resultado">
+    <h2 id="veredicto"></h2>
+    <div class="datos" id="datos"></div>
+    <div class="checks" id="checks"></div>
+    <div style="margin-top:12px;"><button class="btn secundario" onclick="reinicia()">Nueva verificación</button></div>
+  </div>
+</div>
+
+<footer>VerificaciónID · OCR local con Tesseract.js · Valida dígitos de control MRZ (ICAO 9303) · Edad mínima configurable (<span id="edadMinTxt"></span>+)</footer>
+<canvas id="lienzo"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+/* ================= Configuración ================= */
+const EDAD_MINIMA = 18; // cámbialo a 21 para el estándar Kinky
+document.getElementById('edadMinTxt').textContent = EDAD_MINIMA;
+
+/* ================= Utilidades MRZ (ICAO 9303) ================= */
+const VALOR = c => c === '<' ? 0 : (c >= '0' && c <= '9') ? +c : c.charCodeAt(0) - 55;
+function digitoControl(s){
+  const pesos=[7,3,1]; let suma=0;
+  for(let i=0;i<s.length;i++) suma += VALOR(s[i])*pesos[i%3];
+  return String(suma%10);
+}
+function fechaMRZ(yymmdd, esNacimiento){
+  if(!/^\d{6}$/.test(yymmdd)) return null;
+  const yy=+yymmdd.slice(0,2), mm=+yymmdd.slice(2,4), dd=+yymmdd.slice(4,6);
+  if(mm<1||mm>12||dd<1||dd>31) return null;
+  const hoy=new Date();
+  let siglo = 2000;
+  if(esNacimiento){ if(2000+yy > hoy.getFullYear()) siglo=1900; }
+  else { siglo = (yy < 70) ? 2000 : 1900; }
+  return new Date(siglo+yy, mm-1, dd);
+}
+function edadDe(f){
+  const hoy=new Date(); let e=hoy.getFullYear()-f.getFullYear();
+  const m=hoy.getMonth()-f.getMonth();
+  if(m<0||(m===0&&hoy.getDate()<f.getDate())) e--;
+  return e;
+}
+const PAISES={ESP:'España',UTO:'Utopía (especimen)',NLD:'Países Bajos',BEL:'Bélgica',FRA:'Francia',PRT:'Portugal',ITA:'Italia',DEU:'Alemania',ROU:'Rumanía',COL:'Colombia',VEN:'Venezuela',ARG:'Argentina',BRA:'Brasil',DOM:'Rep. Dominicana',MAR:'Marruecos',CHN:'China',UKR:'Ucrania',RUS:'Rusia',GBR:'Reino Unido',USA:'EE.UU.',ECU:'Ecuador',PER:'Perú',PRY:'Paraguay',BOL:'Bolivia',CUB:'Cuba',HND:'Honduras',NIC:'Nicaragua'};
+
+function limpiaLinea(l){
+  return l.toUpperCase().replace(/[«]/g,'<<').replace(/[^A-Z0-9<]/g,'');
+}
+
+/* Analiza un bloque de texto buscando un MRZ TD3 (pasaporte 2x44) o TD1 (DNI 3x30) */
+function parseaMRZ(texto){
+  const lineas = texto.split(/\n+/).map(limpiaLinea).filter(l=>l.length>=25 && l.includes('<'));
+  // TD3: pasaporte
+  for(let i=0;i<lineas.length-1;i++){
+    const l1=lineas[i], l2=lineas[i+1];
+    if(l1.startsWith('P') && l2.length>=44){
+      const L2=l2.padEnd(44,'<').slice(0,44);
+      const r=parseaTD3(l1.padEnd(44,'<').slice(0,44), L2);
+      if(r) return r;
+    }
+  }
+  // TD1: DNI/tarjeta id — 3 líneas de 30
+  for(let i=0;i<lineas.length-2;i++){
+    const a=lineas[i].padEnd(30,'<').slice(0,30),
+          b=lineas[i+1].padEnd(30,'<').slice(0,30),
+          c=lineas[i+2].padEnd(30,'<').slice(0,30);
+    if(/^[IAC]/.test(a)){
+      const r=parseaTD1(a,b,c);
+      if(r) return r;
+    }
+  }
+  return null;
+}
+function parseaTD3(l1,l2){
+  const numDoc=l2.slice(0,9), cNum=l2[9];
+  const nacio=l2.slice(10,13);
+  const fnac=l2.slice(13,19), cNac=l2[19];
+  const sexo=l2[20];
+  const fexp=l2.slice(21,27), cExp=l2[27];
+  const okNum=digitoControl(numDoc)===cNum;
+  const okNac=digitoControl(fnac)===cNac;
+  const okExp=digitoControl(fexp)===cExp;
+  if(!okNac) return null; // sin fecha de nacimiento fiable no hay veredicto
+  const nombre=l1.slice(5).split('<<').map(p=>p.replace(/</g,' ').trim()).filter(Boolean);
+  return {tipo:'Pasaporte', emisor:l1.slice(2,5), nombre:(nombre[1]?nombre[1]+' ':'')+(nombre[0]||''),
+    numDoc:numDoc.replace(/</g,''), nacionalidad:nacio, fnac:fechaMRZ(fnac,true), sexo,
+    fexp:fechaMRZ(fexp,false), okNum, okNac, okExp};
+}
+function parseaTD1(a,b,c){
+  const numDoc=a.slice(5,14), cNum=a[14];
+  const fnac=b.slice(0,6), cNac=b[6];
+  const sexo=b[7];
+  const fexp=b.slice(8,14), cExp=b[14];
+  const nacio=b.slice(15,18);
+  const okNum=digitoControl(numDoc)===cNum;
+  const okNac=digitoControl(fnac)===cNac;
+  const okExp=digitoControl(fexp)===cExp;
+  if(!okNac) return null;
+  const nombre=c.split('<<').map(p=>p.replace(/</g,' ').trim()).filter(Boolean);
+  return {tipo:'Documento de identidad', emisor:a.slice(2,5), nombre:(nombre[1]?nombre[1]+' ':'')+(nombre[0]||''),
+    numDoc:numDoc.replace(/</g,''), nacionalidad:nacio, fnac:fechaMRZ(fnac,true), sexo,
+    fexp:fechaMRZ(fexp,false), okNum, okNac, okExp};
+}
+
+/* ================= Resultado ================= */
+function muestraResultado(r){
+  paraCamara();
+  const edad = r.fnac ? edadDe(r.fnac) : null;
+  const caducado = r.fexp ? r.fexp < new Date() : null;
+  const apto = edad !== null && edad >= EDAD_MINIMA && r.okNac && caducado === false;
+  const res=document.getElementById('resultado');
+  res.className='resultado '+(apto?'apto':'noapto');
+  document.getElementById('veredicto').textContent = apto
+    ? '✔ APTO — mayor de '+EDAD_MINIMA+' años'
+    : '✖ NO APTO' + (edad!==null && edad<EDAD_MINIMA ? ' — menor de '+EDAD_MINIMA : caducado ? ' — documento caducado' : '');
+  const fmt=d=>d?d.toLocaleDateString('es-ES'):'—';
+  document.getElementById('datos').innerHTML =
+    dato('Tipo',r.tipo)+dato('Titular',r.nombre||'—')+dato('Nacionalidad',(PAISES[r.nacionalidad]||r.nacionalidad))+
+    dato('Nacimiento',fmt(r.fnac))+dato('Edad',edad!==null?edad+' años':'—')+
+    dato('Sexo',r.sexo==='F'?'Mujer':r.sexo==='M'?'Hombre':'—')+
+    dato('Nº documento',r.numDoc)+dato('Caducidad',fmt(r.fexp));
+  document.getElementById('checks').innerHTML =
+    chk(r.okNac,'Dígito de control de la fecha de nacimiento')+
+    chk(r.okNum,'Dígito de control del número de documento')+
+    chk(r.okExp,'Dígito de control de la caducidad')+
+    chk(caducado===false,'Documento en vigor')+
+    chk(edad!==null&&edad>=EDAD_MINIMA,'Edad mínima ('+EDAD_MINIMA+'+)');
+  res.scrollIntoView({behavior:'smooth'});
+}
+const dato=(k,v)=>'<div class="dato"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';
+const chk=(ok,txt)=>'<div class="'+(ok?'si':'no')+'">'+(ok?'✔':'✖')+' '+txt+'</div>';
+function reinicia(){
+  document.getElementById('resultado').className='resultado';
+  estado('cam','','Pulsa «Iniciar cámara» para una nueva verificación.');
+}
+
+/* ================= OCR ================= */
+let worker=null, escaneando=false, stream=null;
+async function getWorker(){
+  if(worker) return worker;
+  estado('cam','escaneando','Cargando motor OCR…');
+  worker = await Tesseract.createWorker('eng');
+  await worker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<'});
+  return worker;
+}
+function estado(cual,clase,txt){
+  const p=document.getElementById(cual==='cam'?'puntoCam':'puntoFoto');
+  const e=document.getElementById(cual==='cam'?'estadoCam':'estadoFoto');
+  if(p) p.className='punto '+clase;
+  if(e) e.textContent=txt;
+}
+
+/* --- cámara en vivo --- */
+async function iniciaCamara(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920}}});
+  }catch(e){ estado('cam','mal','No se pudo abrir la cámara: '+e.message); return; }
+  const v=document.getElementById('video');
+  v.srcObject=stream;
+  await getWorker();
+  escaneando=true;
+  estado('cam','escaneando','Escaneando en tiempo real… encaja las líneas <<< en el marco amarillo.');
+  buclOCR();
+}
+function paraCamara(){
+  escaneando=false;
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+  const v=document.getElementById('video'); if(v) v.srcObject=null;
+}
+async function buclOCR(){
+  const v=document.getElementById('video'), cv=document.getElementById('lienzo');
+  while(escaneando){
+    if(v.videoWidth){
+      // recorta el tercio inferior (zona MRZ) y amplía
+      const h=v.videoHeight, w=v.videoWidth;
+      cv.width=w*2; cv.height=Math.floor(h*0.35)*2;
+      const ctx=cv.getContext('2d');
+      ctx.filter='grayscale(1) contrast(1.6)';
+      ctx.drawImage(v, 0, h*0.60, w, h*0.35, 0, 0, cv.width, cv.height);
+      try{
+        const {data}=await worker.recognize(cv);
+        const r=parseaMRZ(data.text);
+        if(r){ estado('cam','ok','¡Documento leído!'); muestraResultado(r); return; }
+      }catch(e){/* siguiente frame */}
+    }
+    await new Promise(r=>setTimeout(r,350));
+  }
+}
+
+/* --- foto subida --- */
+document.getElementById('fotoInput').addEventListener('change', async function(){
+  const f=this.files[0]; if(!f) return;
+  estado('foto','escaneando','Leyendo la imagen…');
+  await getWorker();
+  const img=new Image();
+  img.onload=async ()=>{
+    const cv=document.getElementById('lienzo');
+    // pasada 1: imagen completa; pasada 2: mitad inferior ampliada
+    const zonas=[[0,0,img.width,img.height],[0,img.height*0.45,img.width,img.height*0.55]];
+    for(const [sx,sy,sw,sh] of zonas){
+      cv.width=Math.min(sw*2,2600); cv.height=Math.round(cv.width*sh/sw);
+      const ctx=cv.getContext('2d');
+      ctx.filter='grayscale(1) contrast(1.6)';
+      ctx.drawImage(img,sx,sy,sw,sh,0,0,cv.width,cv.height);
+      try{
+        const {data}=await worker.recognize(cv);
+        const r=parseaMRZ(data.text);
+        if(r){ estado('foto','ok','¡Documento leído!'); muestraResultado(r); return; }
+      }catch(e){}
+    }
+    estado('foto','mal','No se pudo leer la zona MRZ. Prueba con una foto más nítida y recta, con buena luz.');
+  };
+  img.src=URL.createObjectURL(f);
+});
+
+/* --- manual --- */
+function verificaManual(){
+  const r=parseaMRZ(document.getElementById('mrzManual').value);
+  if(r) muestraResultado(r);
+  else alert('No se reconoce un MRZ válido en el texto pegado.');
+}
+
+/* --- pestañas --- */
+function cambiaTab(t){
+  for(const x of ['Cam','Foto','Manual']){
+    document.getElementById('tab'+x).classList.toggle('activo', x.toLowerCase()===t);
+    document.getElementById('panel'+x).classList.toggle('oculto', x.toLowerCase()!==t);
+  }
+  if(t!=='cam') paraCamara();
+}
+</script>
+</body>
+</html>
