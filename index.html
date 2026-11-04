@@ -1589,6 +1589,7 @@ function procesarDelante(c){
       }
       var calidad = analizarCalidad(zona, 'tarjeta');
       pintarResultadoDelante(calidad, encuadre);
+      leerAnverso(c, encuadre.bbox);
     } catch(e){
       caja.innerHTML = veredicto('avi','!','Error inesperado al procesar', String(e && e.message || e));
     }
@@ -1637,6 +1638,118 @@ function pintarResultadoDelante(calidad, encuadre){
   html += '<div class="aviso" style="margin-top:12px">Esto verifica que la foto está bien hecha — no que el documento sea auténtico: eso solo puede confirmarlo el organismo emisor.</div>';
 
   document.getElementById('res-foto').innerHTML = html;
+}
+
+// --- Lectura automática del anverso (número, letra y fechas) con Tesseract, todo en el teléfono ---
+var ocrWorker = null;
+function cargarTesseract(){
+  if (window.Tesseract) return Promise.resolve();
+  return new Promise(function(ok, ko){
+    var sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+    sc.onload = ok; sc.onerror = function(){ ko(new Error('No se pudo cargar el lector. Necesita internet la primera vez.')); };
+    document.head.appendChild(sc);
+  });
+}
+function obtenerWorker(){
+  if (ocrWorker) return ocrWorker;
+  ocrWorker = cargarTesseract().then(function(){ return Tesseract.createWorker('spa'); });
+  ocrWorker.catch(function(){ ocrWorker = null; });
+  return ocrWorker;
+}
+function buscarDatosAnverso(texto){
+  var t = texto.toUpperCase().replace(/[|]/g, 'I');
+  // Errores típicos del OCR en los dígitos
+  var tn = t.replace(/(\d)[O](?=\d)/g, '$10').replace(/(\d)[IL](?=\d)/g, '$11');
+  var doc = null, m;
+  // El OCR a veces confunde la letra final con un número (Z→7/2, S→5, B→8, G→6...)
+  var parecidas = { '7':'Z', '2':'Z', '5':'S', '8':'B', '6':'G', '0':'D', '1':'L', '4':'A', '3':'B', '9':'P' };
+  var LETRAS = 'TRWAGMYFPDXBNJZSQVHLCKE';
+  function letraDe(num, c){
+    if (/[A-Z]/.test(c)) return c;
+    var esperada = LETRAS[parseInt(num, 10) % 23];
+    return parecidas[c] === esperada ? esperada : c;
+  }
+  var reD = /(?:^|\D)(\d{8})\s?-?\s?([A-Z0-9])(?![A-Z0-9])/g;
+  while ((m = reD.exec(tn))){
+    var r = validarDniNie(m[1] + letraDe(m[1], m[2]));
+    if (!doc || r.valido) doc = r;
+    if (r.valido) break;
+  }
+  if (!doc || !doc.valido){
+    var reN = /([XYZ])\s?(\d{7})\s?-?\s?([A-Z0-9])(?![A-Z0-9])/g;
+    while ((m = reN.exec(tn))){
+      var rn = validarDniNie(m[1] + m[2] + letraDe({X:'0',Y:'1',Z:'2'}[m[1]] + m[2], m[3]));
+      if (!doc || rn.valido) doc = rn;
+      if (rn.valido) break;
+    }
+  }
+  var fechas = [], reF = /(\d{2})[\s.\-\/]{1,2}(\d{2})[\s.\-\/]{1,2}(\d{4})/g;
+  while ((m = reF.exec(tn))){
+    var d = +m[1], me = +m[2], a = +m[3];
+    if (d >= 1 && d <= 31 && me >= 1 && me <= 12 && a >= 1900 && a <= 2100){
+      var f = new Date(a, me - 1, d);
+      if (!fechas.some(function(x){ return +x === +f; })) fechas.push(f);
+    }
+  }
+  fechas.sort(function(a, b){ return a - b; });
+  var hoy = new Date(), nac = null, cad = null;
+  fechas.forEach(function(f){
+    if (f < hoy && (!nac || f < nac)) nac = f;
+    if (!cad || f > cad) cad = f;
+  });
+  if (cad && nac && +cad === +nac) cad = null;
+  return { doc: doc, nac: nac, cad: cad };
+}
+function fechaTxt(f){ return ('0'+f.getDate()).slice(-2) + '/' + ('0'+(f.getMonth()+1)).slice(-2) + '/' + f.getFullYear(); }
+function leerAnverso(c, bbox){
+  var caja = document.getElementById('res-foto');
+  var div = document.createElement('div');
+  div.id = 'res-ocr';
+  div.innerHTML = '<div class="seccion">Datos leídos del documento</div><div class="card procesando"><div class="rueda"></div><span id="ocr-prog">Leyendo el número y las fechas…</span></div>';
+  caja.insertBefore(div, caja.children[1] || null);
+  // Recorte del documento, a buena resolución y en gris para leer mejor
+  var x0 = 0, y0 = 0, w = c.width, h = c.height;
+  if (bbox && bbox.x1 - bbox.x0 > 60 && bbox.y1 - bbox.y0 > 60){ x0 = bbox.x0; y0 = bbox.y0; w = bbox.x1 - bbox.x0; h = bbox.y1 - bbox.y0; }
+  var k = Math.max(1, 1800 / w);
+  var o = document.createElement('canvas'); o.width = Math.round(w * k); o.height = Math.round(h * k);
+  var ox = o.getContext('2d'); ox.filter = 'grayscale(1) contrast(1.4)';
+  ox.drawImage(c, x0, y0, w, h, 0, 0, o.width, o.height);
+  obtenerWorker().then(function(wk){
+    return wk.recognize(o).then(function(r1){
+      var d = buscarDatosAnverso(r1.data.text);
+      if (d.doc && d.doc.valido) return d;
+      // segunda pasada con la foto completa por si el recorte cortó el número
+      return wk.recognize(c).then(function(r2){
+        var d2 = buscarDatosAnverso(r1.data.text + '\n' + r2.data.text);
+        return d2;
+      });
+    });
+  }).then(function(d){
+    var html = '<div class="seccion">Datos leídos del documento</div>';
+    if (d.doc && d.doc.tipo){
+      html += d.doc.valido
+        ? veredicto('ok','✓', d.doc.tipo + ' ' + d.doc.numero + d.doc.letra + ' · letra correcta', 'El número y la letra de control cuadran.')
+        : veredicto('mal','✕', 'Número leído: ' + d.doc.entrada + ' · la letra NO cuadra', 'Puede ser un error de lectura: compruébalo abajo escribiéndolo a mano. ' + (d.doc.motivo || ''));
+      var inp = document.getElementById('in-dni');
+      if (inp){ inp.value = d.doc.entrada; verificarDniAnverso(); }
+    } else {
+      html += veredicto('avi','!','No he podido leer el número', 'Haz la foto más de cerca, con buena luz y sin reflejos, o escríbelo a mano abajo.');
+    }
+    var hoy = new Date();
+    if (d.nac){
+      var edad = hoy.getFullYear() - d.nac.getFullYear() - ((hoy.getMonth() < d.nac.getMonth() || (hoy.getMonth() === d.nac.getMonth() && hoy.getDate() < d.nac.getDate())) ? 1 : 0);
+      html += '<div class="chk ' + (edad >= 18 ? 'ok' : 'mal') + '"><span class="p">' + (edad >= 18 ? '✓' : '✕') + '</span><span class="n">Nacimiento ' + fechaTxt(d.nac) + ' · ' + edad + ' años' + (edad >= 18 ? ' (mayor de edad)' : ' (MENOR DE EDAD)') + '</span></div>';
+    }
+    if (d.cad && d.cad > hoy){
+      html += '<div class="chk ok"><span class="p">✓</span><span class="n">Válido hasta ' + fechaTxt(d.cad) + '</span></div>';
+    } else if (d.cad){
+      html += '<div class="chk mal"><span class="p">✕</span><span class="n">Caducado el ' + fechaTxt(d.cad) + '</span></div>';
+    }
+    div.innerHTML = html;
+  }).catch(function(e){
+    div.innerHTML = '<div class="seccion">Datos leídos del documento</div>' + veredicto('avi','!','No se pudo leer el documento', String(e && e.message || e));
+  });
 }
 
 function verificarDniAnverso(){
