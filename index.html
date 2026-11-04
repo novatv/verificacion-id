@@ -131,7 +131,7 @@
 <div class="wrap">
 
   <header>
-    <h1>Verificador de Documentos</h1>
+    <h1>Verificador de DNI</h1>
     <div class="sub">Apunta con la cámara — la captura salta sola</div>
     <div class="privado">🔒 La imagen no sale de tu teléfono</div>
   </header>
@@ -140,7 +140,7 @@
     <button role="tab" id="m-delante" aria-selected="true" onclick="cambiarModo('delante')"
       style="flex:1;appearance:none;border:0;background:var(--acc);color:#0b1020;font:inherit;font-size:13.5px;font-weight:600;padding:11px 4px;border-radius:10px;cursor:pointer">🪪 Parte de adelante</button>
     <button role="tab" id="m-reverso" aria-selected="false" onclick="cambiarModo('reverso')"
-      style="flex:1;appearance:none;border:0;background:transparent;color:var(--dim);font:inherit;font-size:13.5px;font-weight:600;padding:11px 4px;border-radius:10px;cursor:pointer">🔤 Detrás / pasaporte</button>
+      style="flex:1;appearance:none;border:0;background:transparent;color:var(--dim);font:inherit;font-size:13.5px;font-weight:600;padding:11px 4px;border-radius:10px;cursor:pointer">🔤 Parte de atrás</button>
   </div>
 
   <div class="card" id="caja-captura">
@@ -150,7 +150,7 @@
         <div class="doc"></div>
         <div class="mrz" id="zona-mrz"></div>
       </div>
-      <div id="estado">Buscando las líneas «&lt;&lt;&lt;» del documento…</div>
+      <div id="estado">Buscando las líneas «&lt;&lt;&lt;» del DNI…</div>
       <button id="btn-luz" class="oculto" onclick="alternarLinterna()">🔦</button>
     </div>
     <button class="btn" id="btn-abrir" onclick="abrirCamara()">📷 Abrir la cámara</button>
@@ -159,7 +159,7 @@
     <label class="btn sec" for="in-archivo" style="margin-top:9px">🖼 Usar una foto de la galería</label>
     <input id="in-archivo" type="file" accept="image/*" style="display:none" onchange="archivoElegido(this)">
     <div class="hint" id="hint-captura">
-      Coloca la <strong>parte de adelante</strong> del documento (la de tu foto) dentro del marco,
+      Coloca la <strong>parte de adelante</strong> del DNI (la de tu foto) dentro del marco,
       sobre un fondo oscuro. Cuando el encuadre, la luz y la nitidez estén bien,
       la captura salta sola. Todo ocurre dentro del teléfono.
     </div>
@@ -172,7 +172,7 @@
     <summary>Qué comprueba esta app exactamente</summary>
     <div class="body">
       <p><strong>De la imagen</strong> analiza lo que hace que una verificación la rechace: nitidez, reflejos, luz, inclinación, colores desvirtuados y resolución.</p>
-      <p><strong>Del documento</strong> lee la zona MRZ y recalcula los dígitos de control del estándar ICAO 9303. Si cuadran, el nombre, la fecha de nacimiento y el número leídos son coherentes con lo impreso.</p>
+      <p><strong>Delante</strong> lee el número del DNI o NIE, comprueba que la letra cuadra, calcula la edad y mira si está caducado. <strong>Detrás</strong> lee las 3 líneas con «&lt;» y recalcula sus dígitos de control. Si cuadran, el nombre, la fecha de nacimiento y el número son coherentes con lo impreso.</p>
       <p><strong>Lo que no puede hacer:</strong> confirmar autenticidad. Eso solo lo puede hacer el organismo emisor o la lectura del chip NFC con las claves oficiales. Verde = «se lee bien y es coherente», no «es auténtico».</p>
     </div>
   </details>
@@ -182,8 +182,8 @@
     <div class="body">
       <ul>
         <li><strong>Luz natural de día</strong>, cerca de una ventana. El flash directo crea un reflejo en el centro.</li>
-        <li><strong>Fondo oscuro y liso</strong> debajo del documento.</li>
-        <li><strong>Las cuatro esquinas visibles</strong>, sin dedos tapando datos y el documento recto.</li>
+        <li><strong>Fondo oscuro y liso</strong> debajo del DNI.</li>
+        <li><strong>Las cuatro esquinas visibles</strong>, sin dedos tapando datos y el DNI recto.</li>
         <li><strong>Cámara trasera</strong>, no la frontal.</li>
       </ul>
     </div>
@@ -341,13 +341,15 @@ function validarMrz(texto, hoy) {
   const L = lineas.map(l => l.length);
 
   if (lineas.length === 3 && L.every(n => n === 30)) res.formato = 'TD1';
-  else if (lineas.length === 2 && L.every(n => n === 36)) res.formato = 'TD2';
-  else if (lineas.length === 2 && L.every(n => n === 44)) res.formato = 'TD3';
+  else if (lineas.length === 2 && (L.every(n => n === 36) || L.every(n => n === 44))) {
+    res.errorGlobal = 'Esto no es un DNI: parece un pasaporte o un visado. Esta app solo comprueba DNI y NIE. Enfoca la parte de atrás del DNI (3 líneas con «<»).';
+    return res;
+  }
   else {
     res.errorGlobal =
       'Las líneas no tienen la longitud estándar. Has introducido ' + lineas.length +
       ' línea(s) de ' + L.join(' y ') + ' caracteres. Los formatos válidos son: ' +
-      '3 líneas de 30 (tarjeta de identidad / DNI 3.0), 2 de 36 (visado o documento de viaje) o 2 de 44 (pasaporte). ' +
+      'la parte de atrás del DNI tiene 3 líneas de 30 caracteres. ' +
       'Recuerda que los espacios en blanco del documento son el carácter «<».';
     return res;
   }
@@ -1357,8 +1359,8 @@ function cambiarModo(m){
   br.setAttribute('aria-selected', m === 'reverso');
   document.getElementById('zona-mrz').style.display = m === 'reverso' ? '' : 'none';
   document.getElementById('hint-captura').innerHTML = m === 'delante'
-    ? 'Coloca la <strong>parte de adelante</strong> del documento (la de tu foto) dentro del marco, sobre un fondo oscuro. Cuando el encuadre, la luz y la nitidez estén bien, la captura salta sola. Todo ocurre dentro del teléfono.'
-    : 'Enfoca el lado con las líneas de caracteres «&lt;» (la página de datos del pasaporte o el <strong>reverso</strong> del DNI). En cuanto la lectura sea válida, la captura salta sola. Todo ocurre dentro del teléfono.';
+    ? 'Coloca la <strong>parte de adelante</strong> del DNI (la de tu foto) dentro del marco, sobre un fondo oscuro. Cuando el encuadre, la luz y la nitidez estén bien, la captura salta sola. Todo ocurre dentro del teléfono.'
+    : 'Enfoca la <strong>parte de atrás</strong> del DNI, la de las 3 líneas con caracteres «&lt;». En cuanto la lectura sea válida, la captura salta sola. Todo ocurre dentro del teléfono.';
 }
 
 function esc(s){
