@@ -1,469 +1,1815 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Verificación de identidad en tiempo real</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Verificador DNI">
+<title>Verificador de DNI</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <style>
-  :root{--rojo:#e30613;--verde:#2e9e5b;--amarillo:#ffd200;--fondo:#141414;--panel:#1f1f1f;--borde:#333;--texto:#eee;}
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Segoe UI',Arial,sans-serif;background:var(--fondo);color:var(--texto);min-height:100vh;}
-  header{background:var(--rojo);padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-  header h1{font-size:20px;color:#fff;font-style:italic;}
-  header h1 span{color:var(--amarillo);}
-  header .sub{margin-left:auto;font-size:12px;color:#ffd9db;}
-  .wrap{max-width:860px;margin:18px auto;padding:0 16px;}
-  .privacidad{background:#10281a;border:1px solid #1d4d31;color:#9fdcb5;border-radius:6px;padding:10px 14px;font-size:13px;margin-bottom:14px;}
-  .lado{display:flex;gap:14px;background:var(--panel);border:1px solid var(--borde);border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:14px;flex-wrap:wrap;align-items:center;}
-  .lado b{color:var(--amarillo);}
-  .lado label{display:flex;align-items:center;gap:6px;cursor:pointer;}
-  .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
-  .tabs button{background:var(--panel);color:#bbb;border:1px solid var(--borde);padding:10px 16px;border-radius:6px;font-size:14px;cursor:pointer;}
-  .tabs button.activo{background:var(--rojo);border-color:var(--rojo);color:#fff;font-weight:600;}
-  .panel{background:var(--panel);border:1px solid var(--borde);border-radius:8px;padding:16px;margin-bottom:14px;}
-  .oculto{display:none;}
-  video{width:100%;border-radius:6px;background:#000;max-height:420px;object-fit:cover;}
-  .guia{position:relative;}
-  .guia .marco{position:absolute;pointer-events:none;border:2px dashed var(--amarillo);border-radius:6px;box-shadow:0 0 0 2000px rgba(0,0,0,.25);}
-  .guia .marco.frontal{left:10%;right:10%;top:12%;bottom:12%;}
-  .guia .marco.mrz{left:4%;right:4%;bottom:6%;height:26%;top:auto;}
-  .guia .marco small{position:absolute;top:-22px;left:0;color:var(--amarillo);font-size:12px;background:rgba(0,0,0,.6);padding:2px 8px;border-radius:4px;white-space:nowrap;}
-  .estado{display:flex;align-items:center;gap:10px;font-size:14px;margin-top:12px;color:#bbb;}
-  .punto{width:10px;height:10px;border-radius:50%;background:#666;flex-shrink:0;}
-  .punto.escaneando{background:var(--amarillo);animation:parp 1s infinite;}
-  .punto.ok{background:var(--verde);} .punto.mal{background:var(--rojo);}
-  @keyframes parp{50%{opacity:.3;}}
-  .btn{background:var(--rojo);color:#fff;border:none;padding:11px 20px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;}
-  .btn.secundario{background:#3a3a3a;}
-  textarea{width:100%;background:#111;color:#8fd;border:1px solid var(--borde);border-radius:6px;padding:10px;font-family:monospace;font-size:14px;min-height:90px;letter-spacing:1px;}
-  input[type=file]{color:#bbb;}
-  .resultado{border-radius:8px;padding:18px;margin-top:4px;display:none;}
-  .resultado.apto{display:block;background:#10281a;border:2px solid var(--verde);}
-  .resultado.noapto{display:block;background:#2b1113;border:2px solid var(--rojo);}
-  .resultado h2{font-size:22px;margin-bottom:10px;}
-  .apto h2{color:#5fd68d;} .noapto h2{color:#ff6b74;}
-  .datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:8px;}
-  .dato{background:rgba(255,255,255,.05);border-radius:6px;padding:10px;}
-  .dato .k{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;}
-  .dato .v{font-size:16px;font-weight:600;margin-top:2px;}
-  .checks{margin-top:12px;font-size:13px;line-height:1.9;}
-  .checks .si{color:#5fd68d;} .checks .no{color:#ff6b74;} .checks .neutro{color:#999;}
-  footer{color:#666;font-size:12px;text-align:center;padding:20px;}
-  canvas{display:none;}
+  :root{
+    --bg:#0b1020; --bg2:#121a33; --card:#161f3d; --card2:#1d2749;
+    --line:#2a3661; --txt:#eef2ff; --dim:#98a4cc;
+    --ok:#34d399; --okbg:rgba(52,211,153,.12);
+    --mal:#f87171; --malbg:rgba(248,113,113,.12);
+    --avi:#fbbf24; --avibg:rgba(251,191,36,.12);
+    --acc:#7c9cff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+    font-size:16px; line-height:1.5;
+    padding:0 0 max(40px,env(safe-area-inset-bottom));
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:620px;margin:0 auto;padding:0 16px}
+  header{padding:calc(20px + env(safe-area-inset-top)) 0 16px;text-align:center}
+  h1{margin:0;font-size:21px;font-weight:700;letter-spacing:-.02em}
+  .sub{color:var(--dim);font-size:13px;margin-top:5px}
+  .privado{
+    display:inline-flex;align-items:center;gap:6px;margin-top:11px;
+    background:var(--okbg);border:1px solid rgba(52,211,153,.3);
+    color:var(--ok);font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;
+  }
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+  textarea{
+    width:100%;background:var(--bg);color:var(--txt);
+    border:1.5px solid var(--line);border-radius:12px;padding:14px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    white-space:pre;overflow-x:auto;font-size:13px;letter-spacing:.02em;min-height:96px;resize:vertical;
+  }
+  textarea:focus{outline:0;border-color:var(--acc)}
+  .hint{font-size:12px;color:var(--dim);margin-top:9px;line-height:1.45}
+  .btn{
+    width:100%;appearance:none;border:0;border-radius:12px;background:var(--acc);color:#0b1020;
+    font:inherit;font-weight:700;font-size:16px;padding:15px;margin-top:12px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+  }
+  .btn:active{opacity:.8}
+  .btn.sec{background:transparent;color:var(--dim);border:1.5px solid var(--line);font-weight:600;font-size:14px;padding:11px}
+  .oculto{display:none !important}
+
+  /* --- visor de cámara --- */
+  #visor{position:relative;border-radius:16px;overflow:hidden;background:#000;margin-bottom:12px}
+  #visor video{width:100%;display:block}
+  .marco{position:absolute;inset:0;pointer-events:none}
+  .marco .doc{
+    position:absolute;left:4%;right:4%;top:10%;bottom:10%;
+    border:2.5px solid rgba(255,255,255,.85);border-radius:12px;
+    box-shadow:0 0 0 2000px rgba(0,0,0,.42);
+  }
+  .marco .mrz{
+    position:absolute;left:6%;right:6%;bottom:13%;height:19%;
+    border:2px dashed rgba(124,156,255,.95);border-radius:8px;
+    transition:border-color .3s, box-shadow .3s;
+  }
+  .marco .mrz.viva{border-color:var(--ok);box-shadow:0 0 18px rgba(52,211,153,.5)}
+  #estado{
+    position:absolute;left:50%;transform:translateX(-50%);top:3%;
+    background:rgba(10,14,28,.82);color:#fff;font-size:13px;font-weight:600;
+    padding:8px 16px;border-radius:99px;white-space:nowrap;max-width:92%;
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  #btn-luz{
+    position:absolute;right:10px;bottom:10px;width:46px;height:46px;border-radius:50%;
+    border:0;background:rgba(10,14,28,.75);color:#fff;font-size:20px;cursor:pointer;
+  }
+  #btn-luz.encendida{background:var(--avi);color:#000}
+  #miniatura{width:100%;border-radius:14px;display:block;margin-bottom:12px;border:1px solid var(--line)}
+  .procesando{display:flex;align-items:center;gap:12px;padding:16px;color:var(--dim);font-size:14px}
+  .rueda{
+    width:20px;height:20px;border-radius:50%;flex-shrink:0;
+    border:3px solid var(--line);border-top-color:var(--acc);
+    animation:girar .8s linear infinite;
+  }
+  @keyframes girar{to{transform:rotate(360deg)}}
+
+  /* --- resultados --- */
+  .veredicto{border-radius:14px;padding:16px;display:flex;gap:13px;align-items:flex-start;margin-bottom:14px}
+  .veredicto .ico{font-size:25px;line-height:1.1;flex-shrink:0}
+  .veredicto .tit{font-weight:700;font-size:16.5px}
+  .veredicto .txt{font-size:13.5px;opacity:.92;margin-top:3px;line-height:1.45}
+  .v-ok{background:var(--okbg);border:1px solid rgba(52,211,153,.35);color:var(--ok)}
+  .v-mal{background:var(--malbg);border:1px solid rgba(248,113,113,.35);color:var(--mal)}
+  .v-avi{background:var(--avibg);border:1px solid rgba(251,191,36,.35);color:var(--avi)}
+  .seccion{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:20px 0 9px}
+  .chk{display:flex;align-items:center;gap:11px;padding:11px 12px;background:var(--card2);border-radius:10px;margin-bottom:7px;font-size:14px}
+  .chk .p{font-size:16px;flex-shrink:0;width:20px;text-align:center}
+  .chk .n{flex:1;min-width:0}
+  .chk .d{font-size:11.5px;color:var(--dim);margin-top:1px;word-break:break-all;font-family:ui-monospace,monospace}
+  .chk.ok{border-left:3px solid var(--ok)} .chk.ok .p{color:var(--ok)}
+  .chk.mal{border-left:3px solid var(--mal)} .chk.mal .p{color:var(--mal)}
+  .chk.aviso{border-left:3px solid var(--avi)} .chk.aviso .p{color:var(--avi)}
+  .aviso{background:var(--avibg);border:1px solid rgba(251,191,36,.3);color:var(--avi);border-radius:10px;padding:11px 13px;font-size:13px;margin-bottom:8px;line-height:1.45}
+  .destacados{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:6px}
+  .dato{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:13px 14px}
+  .dato.ancho{grid-column:1 / -1}
+  .dato .e{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+  .dato .v{font-size:17px;font-weight:700;margin-top:3px;word-break:break-word}
+  .dato .m{font-size:11.5px;margin-top:3px;color:var(--ok);font-weight:600}
+  .dato .m.mal{color:var(--mal)}
+  details{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:14px;overflow:hidden}
+  summary{padding:15px 18px;cursor:pointer;font-weight:600;font-size:14.5px;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"＋";float:right;color:var(--dim);font-weight:400}
+  details[open] summary::after{content:"−"}
+  details .body{padding:0 18px 18px;font-size:13.5px;color:var(--dim);line-height:1.6}
+  details .body strong{color:var(--txt)}
+  details .body ul{padding-left:18px;margin:8px 0}
+  details .body li{margin-bottom:6px}
+  footer{text-align:center;color:var(--dim);font-size:11.5px;padding:26px 16px 0;line-height:1.6}
 </style>
 </head>
 <body>
-<header>
-  <h1>Verificación<span>ID</span></h1>
-  <div class="sub">Resultado en tiempo real · El documento no sale de tu dispositivo</div>
-</header>
-
 <div class="wrap">
-  <div class="privacidad">🔒 <b>Privacidad total:</b> la lectura se hace con OCR dentro de tu navegador. Ninguna imagen ni dato del documento se envía a ningún servidor.</div>
 
-  <div class="lado">
-    <b>Lado del documento:</b>
-    <label><input type="radio" name="lado" value="frontal" checked onchange="cambiaLado()"> Parte de adelante (DNI)</label>
-    <label><input type="radio" name="lado" value="mrz" onchange="cambiaLado()"> Trasera / pasaporte (líneas &lt;&lt;&lt;)</label>
+  <header>
+    <h1>Verificador de Documentos</h1>
+    <div class="sub">Apunta con la cámara — la captura salta sola</div>
+    <div class="privado">🔒 La imagen no sale de tu teléfono</div>
+  </header>
+
+  <div class="tabs" role="tablist" style="display:flex;gap:5px;background:var(--bg2);padding:5px;border-radius:14px;margin-bottom:18px">
+    <button role="tab" id="m-delante" aria-selected="true" onclick="cambiarModo('delante')"
+      style="flex:1;appearance:none;border:0;background:var(--acc);color:#0b1020;font:inherit;font-size:13.5px;font-weight:600;padding:11px 4px;border-radius:10px;cursor:pointer">🪪 Parte de adelante</button>
+    <button role="tab" id="m-reverso" aria-selected="false" onclick="cambiarModo('reverso')"
+      style="flex:1;appearance:none;border:0;background:transparent;color:var(--dim);font:inherit;font-size:13.5px;font-weight:600;padding:11px 4px;border-radius:10px;cursor:pointer">🔤 Detrás / pasaporte</button>
   </div>
 
-  <div class="tabs">
-    <button id="tabCam" class="activo" onclick="cambiaTab('cam')">📷 Cámara en vivo</button>
-    <button id="tabFoto" onclick="cambiaTab('foto')">📸 Hacer foto</button>
-    <button id="tabManual" onclick="cambiaTab('manual')">⌨ Pegar texto</button>
-  </div>
-
-  <!-- Cámara -->
-  <div class="panel" id="panelCam">
-    <div class="guia">
-      <video id="video" autoplay playsinline muted></video>
-      <div class="marco frontal" id="marco"><small id="marcoTxt">Encaja aquí la parte de adelante del DNI</small></div>
+  <div class="card" id="caja-captura">
+    <div id="visor" class="oculto">
+      <video id="video" playsinline muted autoplay></video>
+      <div class="marco">
+        <div class="doc"></div>
+        <div class="mrz" id="zona-mrz"></div>
+      </div>
+      <div id="estado">Buscando las líneas «&lt;&lt;&lt;» del documento…</div>
+      <button id="btn-luz" class="oculto" onclick="alternarLinterna()">🔦</button>
     </div>
-    <div class="estado"><span class="punto" id="puntoCam"></span><span id="estadoCam">Pulsa «Iniciar cámara» y encaja el documento en el marco.</span></div>
-    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn" id="btnCam" onclick="iniciaCamara()">Iniciar cámara</button>
-      <button class="btn secundario" onclick="paraCamara()">Parar</button>
+    <button class="btn" id="btn-abrir" onclick="abrirCamara()">📷 Abrir la cámara</button>
+    <button class="btn oculto" id="btn-disparar" onclick="disparar()">⚪ Capturar ahora</button>
+    <button class="btn sec oculto" id="btn-cerrar" onclick="cerrarCamara()">Cancelar</button>
+    <label class="btn sec" for="in-archivo" style="margin-top:9px">🖼 Usar una foto de la galería</label>
+    <input id="in-archivo" type="file" accept="image/*" style="display:none" onchange="archivoElegido(this)">
+    <div class="hint" id="hint-captura">
+      Coloca la <strong>parte de adelante</strong> del documento (la de tu foto) dentro del marco,
+      sobre un fondo oscuro. Cuando el encuadre, la luz y la nitidez estén bien,
+      la captura salta sola. Todo ocurre dentro del teléfono.
     </div>
   </div>
 
-  <!-- Foto -->
-  <div class="panel oculto" id="panelFoto">
-    <p style="font-size:13px;color:#bbb;margin-bottom:10px;">Haz una foto nítida y recta del documento, con buena luz y sin reflejos.</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-      <button class="btn" onclick="document.getElementById('fotoCaptura').click()">📸 Hacer foto con el móvil</button>
-      <button class="btn secundario" onclick="document.getElementById('fotoInput').click()">🖼 Elegir de la galería</button>
+  <img id="miniatura" class="oculto" alt="Foto capturada">
+  <div id="res-foto"></div>
+
+  <details>
+    <summary>Qué comprueba esta app exactamente</summary>
+    <div class="body">
+      <p><strong>De la imagen</strong> analiza lo que hace que una verificación la rechace: nitidez, reflejos, luz, inclinación, colores desvirtuados y resolución.</p>
+      <p><strong>Del documento</strong> lee la zona MRZ y recalcula los dígitos de control del estándar ICAO 9303. Si cuadran, el nombre, la fecha de nacimiento y el número leídos son coherentes con lo impreso.</p>
+      <p><strong>Lo que no puede hacer:</strong> confirmar autenticidad. Eso solo lo puede hacer el organismo emisor o la lectura del chip NFC con las claves oficiales. Verde = «se lee bien y es coherente», no «es auténtico».</p>
     </div>
-    <input type="file" id="fotoCaptura" accept="image/*" capture="environment" class="oculto">
-    <input type="file" id="fotoInput" accept="image/*" class="oculto">
-    <div class="estado"><span class="punto" id="puntoFoto"></span><span id="estadoFoto"></span></div>
-  </div>
+  </details>
 
-  <!-- Manual -->
-  <div class="panel oculto" id="panelManual">
-    <p style="font-size:13px;color:#bbb;margin-bottom:10px;">Pega el texto del documento (frontal) o las líneas MRZ (trasera/pasaporte):</p>
-    <textarea id="mrzManual" placeholder="DNI 12345678Z&#10;FECHA DE NACIMIENTO 12 06 1985&#10;VALIDEZ 01 01 2030"></textarea>
-    <div style="margin-top:10px;"><button class="btn" onclick="verificaManual()">Verificar</button></div>
-  </div>
+  <details>
+    <summary>Consejos para que una plataforma acepte tu foto</summary>
+    <div class="body">
+      <ul>
+        <li><strong>Luz natural de día</strong>, cerca de una ventana. El flash directo crea un reflejo en el centro.</li>
+        <li><strong>Fondo oscuro y liso</strong> debajo del documento.</li>
+        <li><strong>Las cuatro esquinas visibles</strong>, sin dedos tapando datos y el documento recto.</li>
+        <li><strong>Cámara trasera</strong>, no la frontal.</li>
+      </ul>
+    </div>
+  </details>
 
-  <!-- Resultado -->
-  <div class="resultado" id="resultado">
-    <h2 id="veredicto"></h2>
-    <div class="datos" id="datos"></div>
-    <div class="checks" id="checks"></div>
-    <div style="margin-top:12px;"><button class="btn secundario" onclick="reinicia()">Nueva verificación</button></div>
-  </div>
+  <details>
+    <summary>Privacidad</summary>
+    <div class="body">
+      <p>Este archivo funciona sin conexión: no hay servidor ni analítica, y ni la imagen ni el vídeo salen del teléfono. Puedes activar el modo avión y todo funciona igual.</p>
+    </div>
+  </details>
+
+  <footer>
+    Herramienta de verificación de formato y calidad.<br>
+    No sustituye la comprobación oficial del organismo emisor.
+  </footer>
 </div>
 
-<footer>VerificaciónID · OCR local con Tesseract.js · Frontal DNI (letra de control mod-23) y MRZ (ICAO 9303) · Edad mínima <span id="edadMinTxt"></span>+</footer>
-<canvas id="lienzo"></canvas>
+<canvas id="lienzo" class="oculto"></canvas>
 
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
-/* ================= Configuración ================= */
-const EDAD_MINIMA = 18; // cámbialo a 21 para el estándar Kinky
-document.getElementById('edadMinTxt').textContent = EDAD_MINIMA;
-let lado = 'frontal';
+/* ============================================================
+   Núcleo de validación — Verificador de Documentos
+   Todo se ejecuta localmente. No hay red, no hay almacenamiento.
+   ============================================================ */
 
-/* ================= Utilidades comunes ================= */
-function edadDe(f){
-  const hoy=new Date(); let e=hoy.getFullYear()-f.getFullYear();
-  const m=hoy.getMonth()-f.getMonth();
-  if(m<0||(m===0&&hoy.getDate()<f.getDate())) e--;
-  return e;
+/* ---------- Utilidades ---------- */
+
+function limpiar(s) {
+  return (s || '').toUpperCase().replace(/[\s–—-]/g, '');
 }
-const PAISES={ESP:'España',UTO:'Utopía (especimen)',NLD:'Países Bajos',BEL:'Bélgica',FRA:'Francia',PRT:'Portugal',ITA:'Italia',DEU:'Alemania',ROU:'Rumanía',COL:'Colombia',VEN:'Venezuela',ARG:'Argentina',BRA:'Brasil',DOM:'Rep. Dominicana',MAR:'Marruecos',CHN:'China',UKR:'Ucrania',RUS:'Rusia',GBR:'Reino Unido',USA:'EE.UU.',ECU:'Ecuador',PER:'Perú',PRY:'Paraguay',BOL:'Bolivia',CUB:'Cuba',HND:'Honduras',NIC:'Nicaragua'};
 
-/* ================= Parte FRONTAL del DNI ================= */
-const LETRAS_DNI='TRWAGMYFPDXBNJZSQVHLCKE';
-function parseaFrontal(texto){
-  const t=texto.toUpperCase();
-  // Fechas dd mm aaaa (con espacio, punto, guion o barra)
-  const fechas=[];
-  const reF=/(\d{2})[\s.\-\/]{1,2}(\d{2})[\s.\-\/]{1,2}(\d{4})/g;
-  let m;
-  while((m=reF.exec(t))){
-    const d=+m[1],mes=+m[2],a=+m[3];
-    if(d>=1&&d<=31&&mes>=1&&mes<=12&&a>=1900&&a<=2100){
-      const f=new Date(a,mes-1,d);
-      if(!fechas.some(x=>+x===+f)) fechas.push(f);
+// Valor de un carácter para el cálculo ICAO: dígitos = su valor,
+// A=10 ... Z=35, relleno '<' = 0.
+function valorICAO(c) {
+  if (c >= '0' && c <= '9') return c.charCodeAt(0) - 48;
+  if (c >= 'A' && c <= 'Z') return c.charCodeAt(0) - 55;
+  if (c === '<') return 0;
+  return -1; // carácter inválido
+}
+
+// Dígito de control ICAO 9303: pesos cíclicos 7-3-1, módulo 10.
+function digitoControl(cadena) {
+  const pesos = [7, 3, 1];
+  let suma = 0;
+  for (let i = 0; i < cadena.length; i++) {
+    const v = valorICAO(cadena[i]);
+    if (v < 0) return null; // carácter no permitido en MRZ
+    suma += v * pesos[i % 3];
+  }
+  return String(suma % 10);
+}
+
+/* ---------- DNI / NIE español ---------- */
+
+const LETRAS_DNI = 'TRWAGMYFPDXBNJZSQVHLCKE';
+
+function validarDniNie(entrada) {
+  const s = limpiar(entrada).replace(/\./g, '');
+  const res = { entrada: s, tipo: null, valido: false, motivo: '', numero: '', letra: '', letraEsperada: '' };
+
+  if (!s) { res.motivo = 'No has introducido nada.'; return res; }
+
+  const esDni = /^[0-9]{8}[A-Z]$/.test(s);
+  const esNie = /^[XYZ][0-9]{7}[A-Z]$/.test(s);
+
+  if (!esDni && !esNie) {
+    if (/^[0-9]{8}$/.test(s)) { res.motivo = 'Faltan la letra de control. Un DNI son 8 dígitos + 1 letra.'; return res; }
+    if (/^[XYZ][0-9]{7}$/.test(s)) { res.motivo = 'Falta la letra de control. Un NIE es X, Y o Z + 7 dígitos + 1 letra.'; return res; }
+    if (/^[0-9]{7}[A-Z]$/.test(s)) { res.motivo = 'Solo hay 7 dígitos. Un DNI antiguo se completa con un 0 delante: 0' + s + '.'; return res; }
+    res.motivo = 'El formato no corresponde ni a un DNI (8 dígitos + letra) ni a un NIE (X/Y/Z + 7 dígitos + letra).';
+    return res;
+  }
+
+  res.tipo = esDni ? 'DNI' : 'NIE';
+  res.letra = s.slice(-1);
+
+  let numerico;
+  if (esDni) {
+    numerico = s.slice(0, 8);
+    res.numero = numerico;
+  } else {
+    const prefijos = { X: '0', Y: '1', Z: '2' };
+    numerico = prefijos[s[0]] + s.slice(1, 8);
+    res.numero = s.slice(0, 8);
+  }
+
+  res.letraEsperada = LETRAS_DNI[parseInt(numerico, 10) % 23];
+  res.valido = res.letra === res.letraEsperada;
+  res.motivo = res.valido
+    ? 'La letra de control coincide con el número.'
+    : 'La letra de control no coincide. Para ese número la letra correcta sería «' + res.letraEsperada + '».';
+  return res;
+}
+
+/* ---------- Fechas MRZ (AAMMDD) ---------- */
+
+function parsearFecha(aammdd, esCaducidad, anioActual) {
+  const out = { crudo: aammdd, texto: '—', fecha: null, ok: false };
+  if (!/^[0-9]{6}$/.test(aammdd)) {
+    if (/^<+$/.test(aammdd)) { out.texto = 'no consta'; out.ok = true; }
+    return out;
+  }
+  const aa = parseInt(aammdd.slice(0, 2), 10);
+  const mm = parseInt(aammdd.slice(2, 4), 10);
+  const dd = parseInt(aammdd.slice(4, 6), 10);
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) { out.texto = 'fecha imposible'; return out; }
+
+  const siglo2 = 2000 + aa;
+  let anio;
+  if (esCaducidad) {
+    // Una caducidad casi siempre está en el futuro cercano o pasado reciente.
+    anio = siglo2 <= anioActual + 30 ? siglo2 : 1900 + aa;
+  } else {
+    // Un nacimiento nunca está en el futuro.
+    anio = siglo2 <= anioActual ? siglo2 : 1900 + aa;
+  }
+
+  const f = new Date(Date.UTC(anio, mm - 1, dd));
+  if (f.getUTCFullYear() !== anio || f.getUTCMonth() !== mm - 1 || f.getUTCDate() !== dd) {
+    out.texto = 'fecha imposible'; return out;
+  }
+  out.fecha = f;
+  out.texto = String(dd).padStart(2, '0') + '/' + String(mm).padStart(2, '0') + '/' + anio;
+  out.ok = true;
+  return out;
+}
+
+function nombreLegible(campo) {
+  const partes = campo.split('<<');
+  const apellidos = (partes[0] || '').replace(/</g, ' ').trim();
+  const nombres = (partes.slice(1).join(' ') || '').replace(/</g, ' ').replace(/\s+/g, ' ').trim();
+  if (!apellidos && !nombres) return '—';
+  return (nombres ? nombres + ' ' : '') + apellidos;
+}
+
+const SEXO = { M: 'Masculino', F: 'Femenino', '<': 'No especificado', X: 'No especificado' };
+
+/* ---------- MRZ (ICAO 9303) ---------- */
+
+function validarMrz(texto, hoy) {
+  hoy = hoy || new Date();
+  const anioActual = hoy.getUTCFullYear();
+
+  const lineas = (texto || '')
+    .toUpperCase()
+    .split(/\r?\n/)
+    .map(l => l.replace(/[^A-Z0-9<]/g, ''))
+    .filter(l => l.length > 0);
+
+  const res = { formato: null, lineas, comprobaciones: [], campos: [], valido: false, errorGlobal: null, avisos: [] };
+
+  if (lineas.length === 0) { res.errorGlobal = 'No has pegado ninguna línea de MRZ.'; return res; }
+
+  const L = lineas.map(l => l.length);
+
+  if (lineas.length === 3 && L.every(n => n === 30)) res.formato = 'TD1';
+  else if (lineas.length === 2 && L.every(n => n === 36)) res.formato = 'TD2';
+  else if (lineas.length === 2 && L.every(n => n === 44)) res.formato = 'TD3';
+  else {
+    res.errorGlobal =
+      'Las líneas no tienen la longitud estándar. Has introducido ' + lineas.length +
+      ' línea(s) de ' + L.join(' y ') + ' caracteres. Los formatos válidos son: ' +
+      '3 líneas de 30 (tarjeta de identidad / DNI 3.0), 2 de 36 (visado o documento de viaje) o 2 de 44 (pasaporte). ' +
+      'Recuerda que los espacios en blanco del documento son el carácter «<».';
+    return res;
+  }
+
+  const añadir = (etiqueta, encontrado, calculado, detalle) => {
+    res.comprobaciones.push({
+      etiqueta,
+      encontrado,
+      calculado,
+      ok: calculado !== null && encontrado === calculado,
+      detalle: detalle || ''
+    });
+  };
+
+  let numDoc, fnac, fcad, nacionalidad, sexo, nombre, codigo, emisor, opcional;
+
+  if (res.formato === 'TD3') {
+    const l1 = lineas[0], l2 = lineas[1];
+    codigo = l1.slice(0, 2).replace(/</g, '');
+    emisor = l1.slice(2, 5).replace(/</g, '');
+    nombre = l1.slice(5);
+    numDoc = l2.slice(0, 9);
+    nacionalidad = l2.slice(10, 13).replace(/</g, '');
+    fnac = l2.slice(13, 19);
+    sexo = l2[20];
+    fcad = l2.slice(21, 27);
+    opcional = l2.slice(28, 42);
+
+    añadir('Número de documento', l2[9], digitoControl(numDoc), numDoc.replace(/</g, ''));
+    añadir('Fecha de nacimiento', l2[19], digitoControl(fnac), fnac);
+    añadir('Fecha de caducidad', l2[27], digitoControl(fcad), fcad);
+    añadir('Número personal', l2[42], digitoControl(opcional), opcional.replace(/</g, '') || '(vacío)');
+    añadir('Dígito compuesto', l2[43], digitoControl(l2.slice(0, 10) + l2.slice(13, 20) + l2.slice(21, 43)), 'verifica toda la línea 2');
+
+    if (numDoc[8] === '<' && /^[0-9]/.test(opcional)) {
+      res.avisos.push('Este documento parece usar un número de más de 9 caracteres, que continúa en el campo opcional. El dígito de control del número puede marcarse como incorrecto aunque el documento sea válido.');
+    }
+  } else if (res.formato === 'TD2') {
+    const l1 = lineas[0], l2 = lineas[1];
+    codigo = l1.slice(0, 2).replace(/</g, '');
+    emisor = l1.slice(2, 5).replace(/</g, '');
+    nombre = l1.slice(5);
+    numDoc = l2.slice(0, 9);
+    nacionalidad = l2.slice(10, 13).replace(/</g, '');
+    fnac = l2.slice(13, 19);
+    sexo = l2[20];
+    fcad = l2.slice(21, 27);
+    opcional = l2.slice(28, 35);
+
+    añadir('Número de documento', l2[9], digitoControl(numDoc), numDoc.replace(/</g, ''));
+    añadir('Fecha de nacimiento', l2[19], digitoControl(fnac), fnac);
+    añadir('Fecha de caducidad', l2[27], digitoControl(fcad), fcad);
+    añadir('Dígito compuesto', l2[35], digitoControl(l2.slice(0, 10) + l2.slice(13, 20) + l2.slice(21, 35)), 'verifica toda la línea 2');
+  } else {
+    const l1 = lineas[0], l2 = lineas[1], l3 = lineas[2];
+    codigo = l1.slice(0, 2).replace(/</g, '');
+    emisor = l1.slice(2, 5).replace(/</g, '');
+    numDoc = l1.slice(5, 14);
+    const opcional1 = l1.slice(15, 30);
+    fnac = l2.slice(0, 6);
+    sexo = l2[7];
+    fcad = l2.slice(8, 14);
+    nacionalidad = l2.slice(15, 18).replace(/</g, '');
+    const opcional2 = l2.slice(18, 29);
+    nombre = l3;
+    opcional = (opcional1.replace(/</g, ' ').trim() + ' ' + opcional2.replace(/</g, ' ').trim()).trim();
+
+    añadir('Número de documento', l1[14], digitoControl(numDoc), numDoc.replace(/</g, ''));
+    añadir('Fecha de nacimiento', l2[6], digitoControl(fnac), fnac);
+    añadir('Fecha de caducidad', l2[14], digitoControl(fcad), fcad);
+    añadir('Dígito compuesto', l2[29],
+      digitoControl(l1.slice(5, 30) + l2.slice(0, 7) + l2.slice(8, 15) + l2.slice(18, 29)),
+      'verifica las líneas 1 y 2 juntas');
+  }
+
+  const fNac = parsearFecha(fnac, false, anioActual);
+  const fCad = parsearFecha(fcad, true, anioActual);
+
+  let estadoVigencia = null;
+  if (fCad.fecha) {
+    const dias = Math.floor((fCad.fecha - hoy) / 86400000);
+    if (dias < 0) estadoVigencia = { nivel: 'mal', texto: 'CADUCADO hace ' + Math.abs(dias) + ' días' };
+    else if (dias < 90) estadoVigencia = { nivel: 'aviso', texto: 'Caduca en ' + dias + ' días' };
+    else if (dias < 180) estadoVigencia = { nivel: 'aviso', texto: 'Caduca en ' + dias + ' días (muchos países exigen 6 meses de validez para viajar)' };
+    else estadoVigencia = { nivel: 'bien', texto: 'Vigente — quedan ' + dias + ' días' };
+  }
+
+  let edad = null;
+  if (fNac.fecha) {
+    edad = anioActual - fNac.fecha.getUTCFullYear();
+    const m = hoy.getUTCMonth() - fNac.fecha.getUTCMonth();
+    if (m < 0 || (m === 0 && hoy.getUTCDate() < fNac.fecha.getUTCDate())) edad--;
+  }
+
+  res.campos = [
+    { k: 'Tipo de documento', v: codigo || '—' },
+    { k: 'País emisor', v: emisor || '—' },
+    { k: 'Titular', v: nombreLegible(nombre) },
+    { k: 'Número de documento', v: numDoc.replace(/</g, '') || '—' },
+    { k: 'Nacionalidad', v: nacionalidad || '—' },
+    { k: 'Sexo', v: SEXO[sexo] || sexo || '—' },
+    { k: 'Fecha de nacimiento', v: fNac.texto + (edad !== null ? '  (' + edad + ' años)' : '') },
+    { k: 'Fecha de caducidad', v: fCad.texto }
+  ];
+  if (opcional && opcional.replace(/</g, '').trim()) {
+    res.campos.push({ k: 'Datos adicionales', v: opcional.replace(/</g, ' ').trim() });
+  }
+
+  if (!fNac.ok) res.avisos.push('La fecha de nacimiento no es una fecha válida del calendario.');
+  if (!fCad.ok) res.avisos.push('La fecha de caducidad no es una fecha válida del calendario.');
+  if (!SEXO[sexo]) res.avisos.push('El campo de sexo contiene «' + sexo + '», que no es un valor estándar (M, F o <).');
+  if (res.formato === 'TD3' && lineas[0][0] !== 'P') {
+    res.avisos.push('La primera letra no es «P». Un pasaporte estándar empieza por P.');
+  }
+
+  res.vigencia = estadoVigencia;
+  res.valido = res.comprobaciones.every(c => c.ok) && fNac.ok && fCad.ok;
+  return res;
+}
+
+
+</script>
+<script>
+/* ============================================================
+   Motor OCR de MRZ + análisis de calidad de imagen.
+   100% JavaScript propio: sin librerías, sin red.
+   Opera sobre {data: Uint8ClampedArray RGBA, width, height}.
+   ============================================================ */
+
+/* ---------- Conversión y estadísticos básicos ---------- */
+
+function aGris(im) {
+  const n = im.width * im.height, g = new Float32Array(n), d = im.data;
+  for (let i = 0; i < n; i++) {
+    g[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+  }
+  return { g, w: im.width, h: im.height };
+}
+
+// Imagen integral para umbralizado adaptativo rápido.
+function integral(g, w, h) {
+  const I = new Float64Array((w + 1) * (h + 1));
+  for (let y = 0; y < h; y++) {
+    let fila = 0;
+    for (let x = 0; x < w; x++) {
+      fila += g[y * w + x];
+      I[(y + 1) * (w + 1) + (x + 1)] = I[y * (w + 1) + (x + 1)] + fila;
     }
   }
-  // Número de DNI + letra (valida mod 23) o NIE X/Y/Z
-  let numDoc='', letraOk=null;
-  const reD=/\b(\d{8})[\s\-]?([A-Z])\b/g;
-  while((m=reD.exec(t))){
-    const esperada=LETRAS_DNI[+m[1]%23];
-    numDoc=m[1]+m[2];
-    letraOk=(m[2]===esperada);
-    if(letraOk) break; // nos quedamos con el que valida
-  }
-  if(!numDoc){
-    const reN=/\b([XYZ])[\s\-]?(\d{7})[\s\-]?([A-Z])\b/;
-    const n=t.match(reN);
-    if(n){
-      const num=({X:'0',Y:'1',Z:'2'})[n[1]]+n[2];
-      numDoc=n[1]+n[2]+n[3];
-      letraOk=(n[3]===LETRAS_DNI[+num%23]);
+  return I;
+}
+
+// Umbral adaptativo gaussiano aproximado por media local (ventana ~1/20 del ancho).
+// Devuelve máscara de tinta: 1 = oscuro (trazo).
+function binarizar(g, w, h) {
+  const I = integral(g, w, h);
+  const r = Math.max(10, Math.round(w / 40));
+  const C = 15;
+  const M = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const y0 = Math.max(0, y - r), y1 = Math.min(h - 1, y + r);
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.max(0, x - r), x1 = Math.min(w - 1, x + r);
+      const area = (x1 - x0 + 1) * (y1 - y0 + 1);
+      const suma = I[(y1 + 1) * (w + 1) + (x1 + 1)] - I[y0 * (w + 1) + (x1 + 1)]
+                 - I[(y1 + 1) * (w + 1) + x0] + I[y0 * (w + 1) + x0];
+      M[y * w + x] = g[y * w + x] < suma / area - C ? 1 : 0;
     }
   }
-  if(fechas.length===0 && !numDoc) return null;
-  // La más antigua = nacimiento; la más futura = validez (si hay al menos 2)
-  fechas.sort((a,b)=>a-b);
-  const hoy=new Date();
-  let fnac=null, fexp=null;
-  if(fechas.length>=2){ fnac=fechas[0]; fexp=fechas[fechas.length-1]; }
-  else if(fechas.length===1){ if(fechas[0]<hoy) fnac=fechas[0]; else fexp=fechas[0]; }
-  if(fnac && edadDe(fnac)>110) fnac=null;
-  if(fnac && fexp && +fnac===+fexp) fexp=null;
-  if(!fnac) return null; // sin nacimiento no hay veredicto
-  // Nombre (si aparecen las etiquetas del DNI)
-  let nombre='';
-  const ap=t.match(/APELLIDOS?\s*\n?\s*([A-ZÁÉÍÓÚÑ ]{2,40})/);
-  const no=t.match(/NOMBRE\s*\n?\s*([A-ZÁÉÍÓÚÑ ]{2,40})/);
-  if(no) nombre=no[1].trim();
-  if(ap) nombre=(nombre?nombre+' ':'')+ap[1].trim();
-  const esDni=/DNI|DOCUMENTO NACIONAL|ESPAÑA|ESPANA/.test(t);
-  return {modo:'frontal', tipo:esDni?'DNI (frontal)':'Documento (frontal)', nombre,
-    numDoc, nacionalidad:esDni?'ESP':'', fnac, fexp, sexo:'', letraOk};
+  return M;
 }
 
-/* ================= MRZ (ICAO 9303) ================= */
-const VALOR = c => c === '<' ? 0 : (c >= '0' && c <= '9') ? +c : c.charCodeAt(0) - 55;
-function digitoControl(s){
-  const pesos=[7,3,1]; let suma=0;
-  for(let i=0;i<s.length;i++) suma += VALOR(s[i])*pesos[i%3];
-  return String(suma%10);
-}
-function fechaMRZ(yymmdd, esNacimiento){
-  if(!/^\d{6}$/.test(yymmdd)) return null;
-  const yy=+yymmdd.slice(0,2), mm=+yymmdd.slice(2,4), dd=+yymmdd.slice(4,6);
-  if(mm<1||mm>12||dd<1||dd>31) return null;
-  const hoy=new Date();
-  let siglo = 2000;
-  if(esNacimiento){ if(2000+yy > hoy.getFullYear()) siglo=1900; }
-  else { siglo = (yy < 70) ? 2000 : 1900; }
-  return new Date(siglo+yy, mm-1, dd);
-}
-function limpiaLinea(l){ return l.toUpperCase().replace(/[«]/g,'<<').replace(/[^A-Z0-9<]/g,''); }
-function parseaMRZ(texto){
-  const lineas = texto.split(/\n+/).map(limpiaLinea).filter(l=>l.length>=25 && l.includes('<'));
-  for(let i=0;i<lineas.length-1;i++){
-    const l1=lineas[i], l2=lineas[i+1];
-    if(l1.startsWith('P') && l2.length>=44){
-      const r=parseaTD3(l1.padEnd(44,'<').slice(0,44), l2.padEnd(44,'<').slice(0,44));
-      if(r) return r;
-    }
-  }
-  for(let i=0;i<lineas.length-2;i++){
-    const a=lineas[i].padEnd(30,'<').slice(0,30),
-          b=lineas[i+1].padEnd(30,'<').slice(0,30),
-          c=lineas[i+2].padEnd(30,'<').slice(0,30);
-    if(/^[IAC]/.test(a)){
-      const r=parseaTD1(a,b,c);
-      if(r) return r;
-    }
-  }
-  return null;
-}
-function parseaTD3(l1,l2){
-  const numDoc=l2.slice(0,9), cNum=l2[9];
-  const nacio=l2.slice(10,13);
-  const fnac=l2.slice(13,19), cNac=l2[19];
-  const sexo=l2[20];
-  const fexp=l2.slice(21,27), cExp=l2[27];
-  const okNac=digitoControl(fnac)===cNac;
-  if(!okNac) return null;
-  const nombre=l1.slice(5).split('<<').map(p=>p.replace(/</g,' ').trim()).filter(Boolean);
-  return {modo:'mrz', tipo:'Pasaporte', nombre:(nombre[1]?nombre[1]+' ':'')+(nombre[0]||''),
-    numDoc:numDoc.replace(/</g,''), nacionalidad:nacio, fnac:fechaMRZ(fnac,true), sexo,
-    fexp:fechaMRZ(fexp,false), okNum:digitoControl(numDoc)===cNum, okNac, okExp:digitoControl(fexp)===cExp};
-}
-function parseaTD1(a,b,c){
-  const numDoc=a.slice(5,14), cNum=a[14];
-  const fnac=b.slice(0,6), cNac=b[6];
-  const sexo=b[7];
-  const fexp=b.slice(8,14), cExp=b[14];
-  const nacio=b.slice(15,18);
-  const okNac=digitoControl(fnac)===cNac;
-  if(!okNac) return null;
-  const nombre=c.split('<<').map(p=>p.replace(/</g,' ').trim()).filter(Boolean);
-  return {modo:'mrz', tipo:'Documento de identidad', nombre:(nombre[1]?nombre[1]+' ':'')+(nombre[0]||''),
-    numDoc:numDoc.replace(/</g,''), nacionalidad:nacio, fnac:fechaMRZ(fnac,true), sexo,
-    fexp:fechaMRZ(fexp,false), okNum:digitoControl(numDoc)===cNum, okNac, okExp:digitoControl(fexp)===cExp};
-}
-
-function parseaDocumento(texto){
-  if(lado==='frontal'){ return parseaFrontal(texto) || parseaMRZ(texto); }
-  return parseaMRZ(texto) || parseaFrontal(texto);
-}
-
-/* ================= Autenticidad ================= */
-function analizaAutenticidad(r, caducado){
-  const pruebas=[]; // [ok|false|null, texto]
-  if(r.modo==='frontal'){
-    pruebas.push([r.letraOk, 'Letra de control del número de DNI (mod 23)']);
-  }else{
-    pruebas.push([r.okNac, 'Dígito de control MRZ: fecha de nacimiento']);
-    pruebas.push([r.okNum, 'Dígito de control MRZ: número de documento']);
-    pruebas.push([r.okExp, 'Dígito de control MRZ: caducidad']);
-  }
-  // Coherencia de fechas
-  if(r.fnac && r.fexp) pruebas.push([r.fexp > r.fnac, 'Coherencia de fechas (validez posterior al nacimiento)']);
-  if(r.fexp){
-    const anos=(r.fexp - new Date())/31557600000;
-    pruebas.push([anos < 15 || r.fexp.getFullYear()>=9999, 'Plazo de validez plausible']);
-  }
-  if(r.fnac) pruebas.push([edadDe(r.fnac)<=110 && edadDe(r.fnac)>=0, 'Edad dentro de rango humano']);
-  if(caducado!==null) pruebas.push([caducado===false, 'Documento en vigor']);
-  const falladas = pruebas.filter(p=>p[0]===false).length;
-  const superadas = pruebas.filter(p=>p[0]===true).length;
-  let veredicto, clase;
-  if(falladas>0){ veredicto='⚠️ INDICIOS DE DOCUMENTO FALSO O MANIPULADO — '+falladas+' comprobación(es) fallida(s)'; clase='no'; }
-  else { veredicto='Sin indicios de falsificación · '+superadas+'/'+pruebas.length+' comprobaciones superadas'; clase='si'; }
-  return {pruebas, veredicto, clase, falladas};
-}
-
-/* ================= Resultado ================= */
-function muestraResultado(r){
-  paraCamara();
-  const edad = r.fnac ? edadDe(r.fnac) : null;
-  const caducado = r.fexp ? r.fexp < new Date() : null;
-  const aut = analizaAutenticidad(r, caducado);
-  const apto = edad !== null && edad >= EDAD_MINIMA && caducado !== true && aut.falladas===0;
-  const res=document.getElementById('resultado');
-  res.className='resultado '+(apto?'apto':'noapto');
-  document.getElementById('veredicto').textContent = apto
-    ? '✔ APTO — mayor de '+EDAD_MINIMA+' años'
-    : '✖ NO APTO' + (edad!==null && edad<EDAD_MINIMA ? ' — menor de '+EDAD_MINIMA
-        : caducado ? ' — documento caducado'
-        : aut.falladas>0 ? ' — posible documento falso' : '');
-  const fmt=d=>d?d.toLocaleDateString('es-ES'):'—';
-  document.getElementById('datos').innerHTML =
-    dato('Tipo',r.tipo)+dato('Titular',r.nombre||'—')+
-    dato('Nacionalidad',r.nacionalidad?(PAISES[r.nacionalidad]||r.nacionalidad):'—')+
-    dato('Nacimiento',fmt(r.fnac))+dato('Edad',edad!==null?edad+' años':'—')+
-    (r.sexo?dato('Sexo',r.sexo==='F'?'Mujer':r.sexo==='M'?'Hombre':'—'):'')+
-    dato('Nº documento',r.numDoc||'—')+dato('Caducidad',fmt(r.fexp));
-  let checks='<div style="margin-top:10px;font-weight:700;font-size:14px;" class="'+aut.clase+'">🔍 Autenticidad: '+aut.veredicto+'</div>';
-  for(const [ok,txt] of aut.pruebas){
-    checks += ok===null ? chkN(txt+' — no comprobable en esta foto') : chk(ok,txt);
-  }
-  checks += chk(edad!==null&&edad>=EDAD_MINIMA,'Edad mínima ('+EDAD_MINIMA+'+)');
-  checks += chkN('Nota: hologramas, tintas y material solo se pueden certificar con el chip NFC del documento; esta verificación cubre todo lo comprobable desde una foto');
-  document.getElementById('checks').innerHTML=checks;
-  res.scrollIntoView({behavior:'smooth'});
-}
-const dato=(k,v)=>'<div class="dato"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>';
-const chk=(ok,txt)=>'<div class="'+(ok?'si':'no')+'">'+(ok?'✔':'✖')+' '+txt+'</div>';
-const chkN=txt=>'<div class="neutro">• '+txt+'</div>';
-function reinicia(){
-  document.getElementById('resultado').className='resultado';
-  estado('cam','','Pulsa «Iniciar cámara» para una nueva verificación.');
-}
-
-/* ================= OCR ================= */
-let worker=null, escaneando=false, stream=null;
-async function getWorker(){
-  if(worker) return worker;
-  estado('cam','escaneando','Cargando motor OCR…');
-  worker = await Tesseract.createWorker('spa');
-  return worker;
-}
-async function configuraWorker(){
-  const w=await getWorker();
-  await w.setParameters({
-    tessedit_char_whitelist: lado==='mrz' ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<' : '',
-    tessedit_pageseg_mode: '3',
-  });
-  return w;
-}
-function estado(cual,clase,txt){
-  const p=document.getElementById(cual==='cam'?'puntoCam':'puntoFoto');
-  const e=document.getElementById(cual==='cam'?'estadoCam':'estadoFoto');
-  if(p) p.className='punto '+clase;
-  if(e) e.textContent=txt;
-}
-function cambiaLado(){
-  lado=document.querySelector('input[name=lado]:checked').value;
-  const marco=document.getElementById('marco');
-  marco.className='marco '+(lado==='frontal'?'frontal':'mrz');
-  document.getElementById('marcoTxt').textContent = lado==='frontal'
-    ? 'Encaja aquí la parte de adelante del DNI'
-    : 'Encaja aquí las líneas <<< del documento';
-  if(worker) configuraWorker();
-}
-
-/* --- cámara en vivo --- */
-async function iniciaCamara(){
-  try{
-    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920}}});
-  }catch(e){ estado('cam','mal','No se pudo abrir la cámara: '+e.message); return; }
-  const v=document.getElementById('video');
-  v.srcObject=stream;
-  await configuraWorker();
-  escaneando=true;
-  estado('cam','escaneando','Escaneando en tiempo real… mantén el documento quieto y bien iluminado.');
-  buclOCR();
-}
-function paraCamara(){
-  escaneando=false;
-  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
-  const v=document.getElementById('video'); if(v) v.srcObject=null;
-}
-async function buclOCR(){
-  const v=document.getElementById('video'), cv=document.getElementById('lienzo');
-  while(escaneando){
-    if(v.videoWidth){
-      const h=v.videoHeight, w=v.videoWidth;
-      const ctx=cv.getContext('2d');
-      if(lado==='mrz'){
-        cv.width=w*2; cv.height=Math.floor(h*0.35)*2;
-        ctx.filter='grayscale(1) contrast(1.6)';
-        ctx.drawImage(v, 0, h*0.60, w, h*0.35, 0, 0, cv.width, cv.height);
-      }else{
-        cv.width=Math.min(w*2,2600); cv.height=Math.round(cv.width*(h*0.80)/(w));
-        ctx.filter='grayscale(1) contrast(1.5)';
-        ctx.drawImage(v, w*0.05, h*0.10, w*0.90, h*0.80, 0, 0, cv.width, cv.height);
+// Reduce la imagen a un ancho máximo (promedia el ruido y acelera todo).
+function reducir(im, maxW) {
+  if (im.width <= maxW) return im;
+  const esc = maxW / im.width;
+  const w = maxW, h = Math.round(im.height * esc);
+  const out = new Uint8ClampedArray(w * h * 4);
+  const d = im.data;
+  for (let y = 0; y < h; y++) {
+    const sy0 = y / esc, sy1 = (y + 1) / esc;
+    for (let x = 0; x < w; x++) {
+      const sx0 = x / esc, sx1 = (x + 1) / esc;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let yy = Math.floor(sy0); yy < sy1 && yy < im.height; yy++) {
+        for (let xx = Math.floor(sx0); xx < sx1 && xx < im.width; xx++) {
+          const i = (yy * im.width + xx) * 4;
+          r += d[i]; g += d[i + 1]; b += d[i + 2]; n++;
+        }
       }
-      try{
-        const {data}=await worker.recognize(cv);
-        const r=parseaDocumento(data.text);
-        if(r){ estado('cam','ok','¡Documento leído!'); muestraResultado(r); return; }
-      }catch(e){/* siguiente frame */}
+      const o = (y * w + x) * 4;
+      out[o] = r / n; out[o + 1] = g / n; out[o + 2] = b / n; out[o + 3] = 255;
     }
-    await new Promise(r=>setTimeout(r,350));
   }
+  return { data: out, width: w, height: h };
 }
 
-/* --- foto subida --- */
-function binariza(ctx,w,h){
-  const d=ctx.getImageData(0,0,w,h);
-  const p=d.data; let suma=0;
-  for(let i=0;i<p.length;i+=4) suma+=p[i];
-  const umbral=(suma/(p.length/4))*0.88;
-  for(let i=0;i<p.length;i+=4){
-    const v=p[i]>umbral?255:0;
-    p[i]=p[i+1]=p[i+2]=v;
+// Filtro de mayoría 3x3: elimina motas de ruido de la máscara.
+function limpiarMascara(M, w, h) {
+  const out = new Uint8Array(w * h);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      let s = 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) s += M[(y + dy) * w + (x + dx)];
+      const i = y * w + x;
+      out[i] = M[i] ? (s >= 3 ? 1 : 0) : (s >= 7 ? 1 : 0);
+    }
   }
-  ctx.putImageData(d,0,0);
-}
-async function procesaFoto(f){
-  if(!f) return;
-  estado('foto','escaneando','Leyendo la imagen…');
-  const w=await configuraWorker();
-  let img;
-  try{ img=await createImageBitmap(f,{imageOrientation:'from-image'}); }
-  catch(e){ img=await createImageBitmap(f); }
-  const c=document.getElementById('lienzo');
-  // Zonas a intentar según el lado
-  const zonas = lado==='mrz'
-    ? [[0,img.height*0.45,img.width,img.height*0.55],[0,0,img.width,img.height]]
-    : [[0,0,img.width,img.height],[img.width*0.05,img.height*0.30,img.width*0.90,img.height*0.65]];
-  // Pasadas: escala × preparado × modo de segmentación
-  const pasadas=[];
-  for(const z of zonas)
-    for(const prep of ['gris','bin'])
-      for(const psm of ['3','11'])
-        for(const escala of [2.4,3.2])
-          pasadas.push({z,prep,psm,escala});
-  let n=0;
-  for(const p of pasadas){
-    n++;
-    estado('foto','escaneando','Analizando… intento '+n+'/'+pasadas.length);
-    const [sx,sy,sw,sh]=p.z;
-    c.width=Math.min(Math.round(sw*p.escala),3400);
-    c.height=Math.round(c.width*sh/sw);
-    const ctx=c.getContext('2d',{willReadFrequently:true});
-    ctx.filter='grayscale(1) contrast(1.6)';
-    ctx.drawImage(img,sx,sy,sw,sh,0,0,c.width,c.height);
-    if(p.prep==='bin') binariza(ctx,c.width,c.height);
-    try{
-      await w.setParameters({tessedit_pageseg_mode:p.psm});
-      const {data}=await w.recognize(c);
-      const r=parseaDocumento(data.text);
-      if(r){ estado('foto','ok','¡Documento leído!'); muestraResultado(r); return; }
-    }catch(e){}
-  }
-  estado('foto','mal','No se pudo leer el documento tras '+n+' intentos. Consejos: acerca más el carnet hasta que llene la foto, sin reflejos del flash, sobre fondo oscuro, y con las letras bien enfocadas.');
-}
-document.getElementById('fotoInput').addEventListener('change', function(){ procesaFoto(this.files[0]); this.value=''; });
-document.getElementById('fotoCaptura').addEventListener('change', function(){ procesaFoto(this.files[0]); this.value=''; });
-
-/* --- manual --- */
-function verificaManual(){
-  const r=parseaDocumento(document.getElementById('mrzManual').value);
-  if(r) muestraResultado(r);
-  else alert('No se reconocen datos válidos en el texto pegado.');
+  return out;
 }
 
-/* --- pestañas --- */
-function cambiaTab(t){
-  for(const x of ['Cam','Foto','Manual']){
-    document.getElementById('tab'+x).classList.toggle('activo', x.toLowerCase()===t);
-    document.getElementById('panel'+x).classList.toggle('oculto', x.toLowerCase()!==t);
+/* ---------- Corrección de inclinación ---------- */
+
+// Estima el ángulo de giro del texto proyectando la tinta sobre filas sesgadas:
+// el ángulo correcto concentra la tinta en pocas filas (máxima varianza).
+function estimarInclinacion(M, w, h) {
+  const evaluar = (grados) => {
+    const t = Math.tan(grados * Math.PI / 180);
+    const bins = new Float32Array(h + Math.ceil(Math.abs(t) * w) * 2 + 4);
+    const off = Math.ceil(Math.abs(t) * w) + 2;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (M[y * w + x]) bins[Math.round(y - x * t) + off]++;
+      }
+    }
+    let s = 0, s2 = 0;
+    for (let i = 0; i < bins.length; i++) { s += bins[i]; s2 += bins[i] * bins[i]; }
+    const n = bins.length;
+    return s2 / n - (s / n) * (s / n);
+  };
+  let mejor = 0, mejorV = -1;
+  for (let a = -10; a <= 10; a += 1) {
+    const v = evaluar(a);
+    if (v > mejorV) { mejorV = v; mejor = a; }
   }
-  if(t!=='cam') paraCamara();
+  for (let a = mejor - 0.75; a <= mejor + 0.75; a += 0.25) {
+    const v = evaluar(a);
+    if (v > mejorV) { mejorV = v; mejor = a; }
+  }
+  return mejor;
+}
+
+// Rota una imagen RGBA alrededor de su centro (bilineal, fondo blanco).
+function rotarImagen(im, grados) {
+  const rad = -grados * Math.PI / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const w = im.width, h = im.height;
+  const cx = w / 2, cy = h / 2;
+  const out = new Uint8ClampedArray(w * h * 4);
+  const d = im.data;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const dx = x - cx, dy = y - cy;
+      const sx = cx + dx * cos - dy * sin;
+      const sy = cy + dx * sin + dy * cos;
+      const o = (y * w + x) * 4;
+      const x0 = Math.floor(sx), y0 = Math.floor(sy);
+      if (x0 < 0 || y0 < 0 || x0 >= w - 1 || y0 >= h - 1) {
+        out[o] = out[o + 1] = out[o + 2] = 255; out[o + 3] = 255;
+        continue;
+      }
+      const fx = sx - x0, fy = sy - y0;
+      for (let c = 0; c < 3; c++) {
+        const p00 = d[(y0 * w + x0) * 4 + c], p10 = d[(y0 * w + x0 + 1) * 4 + c];
+        const p01 = d[((y0 + 1) * w + x0) * 4 + c], p11 = d[((y0 + 1) * w + x0 + 1) * 4 + c];
+        out[o + c] = p00 * (1 - fx) * (1 - fy) + p10 * fx * (1 - fy) + p01 * (1 - fx) * fy + p11 * fx * fy;
+      }
+      out[o + 3] = 255;
+    }
+  }
+  return { data: out, width: w, height: h };
+}
+
+/* ---------- Localización de las líneas MRZ ---------- */
+
+// Busca filas con densidad de tinta intermedia y regular (texto), agrupa en bandas.
+function encontrarLineas(M, w, h) {
+  const dens = new Float32Array(h);
+  for (let y = 0; y < h; y++) {
+    let s = 0;
+    for (let x = 0; x < w; x++) s += M[y * w + x];
+    dens[y] = s / w;
+  }
+  // suaviza
+  const sm = new Float32Array(h);
+  for (let y = 0; y < h; y++) {
+    let s = 0, n = 0;
+    for (let k = -2; k <= 2; k++) {
+      const yy = y + k;
+      if (yy >= 0 && yy < h) { s += dens[yy]; n++; }
+    }
+    sm[y] = s / n;
+  }
+  const umbral = 0.035;
+  const bandas = [];
+  let ini = -1;
+  for (let y = 0; y < h; y++) {
+    if (sm[y] > umbral && ini < 0) ini = y;
+    if ((sm[y] <= umbral || y === h - 1) && ini >= 0) {
+      const fin = sm[y] <= umbral ? y : y + 1;
+      if (fin - ini >= Math.max(6, h * 0.02)) bandas.push([ini, fin]);
+      ini = -1;
+    }
+  }
+  if (bandas.length < 2) return bandas;
+
+  // Las líneas MRZ son bandas DENSAS de tinta; los bordes del documento o las
+  // franjas del fondo producen bandas flojas. Filtra por densidad media.
+  const conDens = bandas.map(b => {
+    let s = 0;
+    for (let y = b[0]; y < b[1]; y++) s += sm[y];
+    return { b, d: s / (b[1] - b[0]) };
+  });
+  const maxD = Math.max.apply(null, conDens.map(x => x.d));
+  const densas = conDens.filter(x => x.d > maxD * 0.45).map(x => x.b);
+  const cand = densas.length >= 2 ? densas : bandas;
+
+  // Las líneas MRZ son las últimas 2-3 bandas de altura parecida, cerca del pie.
+  const ult = cand.slice(-3);
+  const alturas = ult.map(b => b[1] - b[0]);
+  const medH = alturas.reduce((a, b) => a + b) / alturas.length;
+  const parecidas = ult.filter(b => {
+    const a = b[1] - b[0];
+    return a > medH * 0.55 && a < medH * 1.8;
+  });
+  return parecidas.length >= 2 ? parecidas : cand.slice(-2);
+}
+
+/* ---------- Segmentación en rejilla y clasificación ---------- */
+
+const N_PLA = 16;
+let PLANTILLAS = null; // {chars, vecs: Float32Array[nPla][256], idx: char -> [vecIdx...]}
+
+function cargarPlantillas(json) {
+  const bin = typeof atob === 'function'
+    ? Uint8Array.from(atob(json.data), c => c.charCodeAt(0))
+    : Uint8Array.from(Buffer.from(json.data, 'base64'));
+  const nPla = bin.length / 256;
+  const vecs = [];
+  for (let i = 0; i < nPla; i++) {
+    const v = new Float32Array(256);
+    let s = 0;
+    for (let j = 0; j < 256; j++) { v[j] = bin[i * 256 + j] / 255; s += v[j] * v[j]; }
+    const nrm = Math.sqrt(s) || 1;
+    for (let j = 0; j < 256; j++) v[j] /= nrm;
+    vecs.push(v);
+  }
+  const idx = {};
+  for (let i = 0; i < nPla; i++) {
+    const c = json.chars[i % json.chars.length];
+    (idx[c] = idx[c] || []).push(i);
+  }
+  PLANTILLAS = { chars: json.chars, vecs, idx };
+}
+
+// Etiqueta componentes conexas dentro de la ventana de la celda y descarta las
+// que invaden desde caracteres vecinos (centroide pegado al borde lateral).
+function filtrarComponentes(M, w, x0, x1, y0, y1) {
+  const cw = x1 - x0, ch = y1 - y0;
+  if (cw <= 0 || ch <= 0) return null;
+  const lab = new Int16Array(cw * ch);
+  const stats = [];
+  const pila = [];
+  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+    if (!M[(y0 + y) * w + (x0 + x)] || lab[y * cw + x]) continue;
+    const id = stats.length + 1;
+    stats.push({ n: 0, sx: 0 });
+    pila.push(y * cw + x);
+    lab[y * cw + x] = id;
+    while (pila.length) {
+      const p = pila.pop();
+      const py = (p / cw) | 0, px = p % cw;
+      stats[id - 1].n++; stats[id - 1].sx += px;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const ny = py + dy, nx = px + dx;
+        if (ny < 0 || ny >= ch || nx < 0 || nx >= cw) continue;
+        const q = ny * cw + nx;
+        if (M[(y0 + ny) * w + (x0 + nx)] && !lab[q]) { lab[q] = id; pila.push(q); }
+      }
+    }
+  }
+  if (!stats.length) return null;
+  // conserva componentes cuyo centroide cae en el 76% central de la celda
+  const margen = cw * 0.12;
+  const validas = new Set();
+  let mayor = 0, idMayor = 0;
+  for (let i = 0; i < stats.length; i++) {
+    const cx = stats[i].sx / stats[i].n;
+    if (cx > margen && cx < cw - margen) validas.add(i + 1);
+    if (stats[i].n > mayor) { mayor = stats[i].n; idMayor = i + 1; }
+  }
+  if (!validas.size) validas.add(idMayor); // nunca dejar la celda vacía si tenía tinta
+  return { lab, cw, ch, validas };
+}
+
+// Normaliza la celda al lienzo 16x16 (mismo protocolo que gen_plantillas.py).
+function normalizarCelda(M, w, x0, x1, y0, y1) {
+  const fc = filtrarComponentes(M, w, x0, x1, y0, y1);
+  if (!fc) return null;
+  const dentro = (x, y) => {
+    const l = fc.lab[(y - y0) * fc.cw + (x - x0)];
+    return l && fc.validas.has(l) ? 1 : 0;
+  };
+  let bx0 = 1e9, bx1 = -1, by0 = 1e9, by1 = -1, tinta = 0;
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    if (dentro(x, y)) {
+      tinta++;
+      if (x < bx0) bx0 = x; if (x > bx1) bx1 = x;
+      if (y < by0) by0 = y; if (y > by1) by1 = y;
+    }
+  }
+  if (tinta < 4) return null;
+  bx1++; by1++;
+  const bw = bx1 - bx0, bh = by1 - by0;
+  const esc = Math.min(N_PLA / bw, N_PLA / bh);
+  const nw = Math.max(1, Math.round(bw * esc)), nh = Math.max(1, Math.round(bh * esc));
+  const ox = (N_PLA - nw) >> 1, oy = (N_PLA - nh) >> 1;
+  const out = new Float32Array(256);
+  // remuestreo por área
+  for (let y = 0; y < nh; y++) {
+    const sy0 = by0 + y * bh / nh, sy1 = by0 + (y + 1) * bh / nh;
+    for (let x = 0; x < nw; x++) {
+      const sx0 = bx0 + x * bw / nw, sx1 = bx0 + (x + 1) * bw / nw;
+      let s = 0, n = 0;
+      for (let yy = Math.floor(sy0); yy < sy1; yy++) {
+        const fy = Math.min(sy1, yy + 1) - Math.max(sy0, yy);
+        if (fy <= 0) continue;
+        for (let xx = Math.floor(sx0); xx < sx1; xx++) {
+          const fx = Math.min(sx1, xx + 1) - Math.max(sx0, xx);
+          if (fx <= 0) continue;
+          s += dentro(xx, yy) * fx * fy;
+          n += fx * fy;
+        }
+      }
+      out[(oy + y) * N_PLA + (ox + x)] = n > 0 ? s / n : 0;
+    }
+  }
+  let nn = 0;
+  for (let j = 0; j < 256; j++) nn += out[j] * out[j];
+  nn = Math.sqrt(nn) || 1;
+  for (let j = 0; j < 256; j++) out[j] /= nn;
+  return out;
+}
+
+// Devuelve candidatos ordenados [{c, p, f}] por correlación máx. entre fuentes.
+// Si se pasa `fuente`, restringe la comparación a las plantillas de esa fuente.
+function clasificar(vec, fuente) {
+  const nChars = PLANTILLAS.chars.length;
+  const res = [];
+  for (const c of PLANTILLAS.chars) {
+    let m = -1, mf = -1;
+    for (const i of PLANTILLAS.idx[c]) {
+      const f = Math.floor(i / nChars);
+      if (fuente !== undefined && f !== fuente) continue;
+      const t = PLANTILLAS.vecs[i];
+      let s = 0;
+      for (let j = 0; j < 256; j++) s += vec[j] * t[j];
+      if (s > m) { m = s; mf = f; }
+    }
+    res.push({ c, p: m, f: mf });
+  }
+  return res.sort((a, b) => b.p - a.p);
+}
+
+// Lee una línea de texto probando los tres anchos de rejilla MRZ.
+function leerLinea(M, w, y0, y1, x0, x1) {
+  const anchos = [44, 36, 30];
+  let mejor = null;
+  // Extensión horizontal por percentiles de tinta (0.5%–99.5%): así una mota
+  // o un borde oscuro en el extremo no estira la rejilla de celdas.
+  const colInk = new Float32Array(x1 - x0);
+  let totalInk = 0;
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    if (M[y * w + x]) { colInk[x - x0]++; totalInk++; }
+  }
+  if (totalInk < 20) return null;
+  // El texto MRZ es un bloque continuo de columnas con tinta y huecos pequeños
+  // entre caracteres. Un borrón del borde o una mota quedan separados por un
+  // hueco grande: se elige el bloque con más tinta y se ignora el resto.
+  const maxHueco = Math.max(6, Math.round(colInk.length / 50));
+  const bloques = [];
+  let ini = -1, hueco = 0, tinta = 0;
+  for (let x = 0; x <= colInk.length; x++) {
+    const hay = x < colInk.length && colInk[x] > 0;
+    if (hay) {
+      if (ini < 0) { ini = x; tinta = 0; }
+      hueco = 0; tinta += colInk[x];
+    } else if (ini >= 0) {
+      hueco++;
+      if (hueco > maxHueco || x === colInk.length) {
+        bloques.push({ ini, fin: x - hueco + 1, tinta });
+        ini = -1; hueco = 0;
+      }
+    }
+  }
+  if (!bloques.length) return null;
+  const principal = bloques.reduce((a, b) => b.tinta > a.tinta ? b : a);
+  const lx0 = x0 + principal.ini, lx1 = x0 + principal.fin;
+  for (const nc of anchos) {
+    const paso = (lx1 - lx0) / nc;
+    if (paso < 4) continue;
+    const celdas = [];
+    let suma = 0;
+    for (let i = 0; i < nc; i++) {
+      const cx0 = Math.round(lx0 + i * paso), cx1 = Math.round(lx0 + (i + 1) * paso);
+      const vec = normalizarCelda(M, w, cx0, cx1, y0, y1);
+      if (!vec) { celdas.push({ cands: [{ c: '<', p: 0.5, f: -1 }], conf: 0.5, vec: null }); suma += 0.5; continue; }
+      const cands = clasificar(vec).slice(0, 6);
+      celdas.push({ cands, conf: cands[0].p, vec });
+      suma += cands[0].p;
+    }
+    const media = suma / nc;
+    if (!mejor || media > mejor.media) mejor = { nc, celdas, media };
+  }
+  if (!mejor) return null;
+  for (const cel of mejor.celdas) delete cel.vec;
+  return mejor;
+}
+
+/* ---------- Autocorrección guiada por dígitos de control ---------- */
+
+const SOLO_DIGITO = { O: '0', Q: '0', D: '0', I: '1', L: '1', Z: '2', E: '3', A: '4', S: '5', G: '6', T: '7', B: '8', J: '3', U: '0' };
+const SOLO_LETRA = { '0': 'O', '1': 'I', '2': 'Z', '5': 'S', '8': 'B', '6': 'G', '4': 'A', '3': 'E', '7': 'T' };
+
+// Posiciones por tipo según formato. d=dígito, a=letra, x=mixto, s=sexo, f=relleno-o-dígito
+function tiposLinea(formato, linea) {
+  if (formato === 'TD3') {
+    if (linea === 0) return 'a'.repeat(44); // tipo, país y nombre: solo letras y '<'
+    return 'x'.repeat(9) + 'd' + 'a'.repeat(3) + 'd'.repeat(6) + 'd' + 's' + 'd'.repeat(6) + 'd' + 'x'.repeat(14) + 'f' + 'd';
+  }
+  if (formato === 'TD2') {
+    if (linea === 0) return 'a'.repeat(36);
+    return 'x'.repeat(9) + 'd' + 'a'.repeat(3) + 'd'.repeat(6) + 'd' + 's' + 'd'.repeat(6) + 'd' + 'x'.repeat(7) + 'd';
+  }
+  // TD1
+  if (linea === 0) return 'a'.repeat(2) + 'a'.repeat(3) + 'x'.repeat(9) + 'd' + 'x'.repeat(15);
+  if (linea === 1) return 'd'.repeat(6) + 'd' + 's' + 'd'.repeat(6) + 'd' + 'a'.repeat(3) + 'x'.repeat(11) + 'd';
+  return 'a'.repeat(30); // línea de nombre
+}
+
+function forzarTipo(c, t) {
+  if (t === 'd' || t === 'f') {
+    if (c >= '0' && c <= '9') return c;
+    if (t === 'f' && c === '<') return c;
+    return SOLO_DIGITO[c] || c;
+  }
+  if (t === 'a') {
+    if (c >= 'A' && c <= 'Z') return c;
+    if (c === '<') return c;
+    return SOLO_LETRA[c] || c;
+  }
+  if (t === 's') {
+    if (c === 'M' || c === 'F' || c === '<') return c;
+    if (c === 'H' || c === 'N') return 'M';
+    if (c === 'P' || c === 'E' || c === 'R') return 'F';
+    return '<';
+  }
+  return c;
+}
+
+// Corrige un campo con su dígito de control probando alternativas de baja
+// confianza, por número de cambios ascendente (primero 1 cambio, luego 2).
+function corregirCampo(chars, celdas, ini, fin, posCd, digitoControlFn) {
+  const campo = () => chars.slice(ini, fin).join('');
+  const cuadra = () => digitoControlFn(campo()) === chars[posCd];
+  if (cuadra()) return true;
+
+  // Caso más frecuente: el campo está bien y el dígito de control se leyó mal.
+  const cdCalc = digitoControlFn(campo());
+  const celCd = celdas[posCd];
+  if (cdCalc !== null && celCd && celCd.conf < 0.96) {
+    const cands = celCd.cands.slice(0, 4).map(k => forzarTipo(k.c, 'd'));
+    if (cands.includes(cdCalc)) { chars[posCd] = cdCalc; return true; }
+  }
+
+  const posiciones = [];
+  for (let i = ini; i < fin; i++) posiciones.push(i);
+  posiciones.push(posCd);
+  posiciones.sort((a, b) => (celdas[a] ? celdas[a].conf : 1) - (celdas[b] ? celdas[b].conf : 1));
+  const dudosas = posiciones.slice(0, 5);
+
+  const alternativas = p => {
+    const set = new Set();
+    if (celdas[p]) for (const cand of celdas[p].cands.slice(0, 4)) {
+      if (cand.c !== chars[p]) set.add(cand.c);
+    }
+    const extra = SOLO_DIGITO[chars[p]] || SOLO_LETRA[chars[p]];
+    if (extra) set.add(extra);
+    set.delete(chars[p]);
+    return [...set];
+  };
+
+  // 1 cambio
+  for (const p of dudosas) {
+    const orig = chars[p];
+    for (const alt of alternativas(p)) {
+      chars[p] = alt;
+      if (cuadra()) return true;
+    }
+    chars[p] = orig;
+  }
+  // 2 cambios
+  for (let i = 0; i < dudosas.length; i++) {
+    for (let j = i + 1; j < dudosas.length; j++) {
+      const p1 = dudosas[i], p2 = dudosas[j];
+      const o1 = chars[p1], o2 = chars[p2];
+      for (const a1 of alternativas(p1)) {
+        chars[p1] = a1;
+        for (const a2 of alternativas(p2)) {
+          chars[p2] = a2;
+          if (cuadra()) return true;
+        }
+        chars[p2] = o2;
+      }
+      chars[p1] = o1;
+    }
+  }
+  return false;
+}
+
+// digitoControl la aporta core.js (misma función que la validación manual)
+function autocorregir(lineasTexto, lineasCeldas, digitoControlFn) {
+  const n = lineasTexto.length;
+  const len = lineasTexto[0].length;
+  let formato = null;
+  if (n === 3 && len === 30) formato = 'TD1';
+  else if (n === 2 && len === 36) formato = 'TD2';
+  else if (n === 2 && len === 44) formato = 'TD3';
+  if (!formato) return { lineas: lineasTexto, formato: null };
+
+  const chars = lineasTexto.map(l => l.split(''));
+  // 1) fuerza tipos por posición
+  for (let li = 0; li < n; li++) {
+    const tipos = tiposLinea(formato, li);
+    for (let i = 0; i < len; i++) chars[li][i] = forzarTipo(chars[li][i], tipos[i] || 'x');
+  }
+  // 2) corrige campo a campo
+  const cel = lineasCeldas;
+  if (formato === 'TD3' || formato === 'TD2') {
+    const L = 1;
+    corregirCampo(chars[L], cel[L], 0, 9, 9, digitoControlFn);
+    corregirCampo(chars[L], cel[L], 13, 19, 19, digitoControlFn);
+    corregirCampo(chars[L], cel[L], 21, 27, 27, digitoControlFn);
+    if (formato === 'TD3') corregirCampo(chars[L], cel[L], 28, 42, 42, digitoControlFn);
+  } else {
+    corregirCampo(chars[0], cel[0], 5, 14, 14, digitoControlFn);
+    corregirCampo(chars[1], cel[1], 0, 6, 6, digitoControlFn);
+    corregirCampo(chars[1], cel[1], 8, 14, 14, digitoControlFn);
+  }
+
+  // 3) pasada final con el dígito compuesto: si los campos ya cuadran pero el
+  // compuesto no, corrige las posiciones de baja confianza que quedan (incluido
+  // el propio dígito compuesto, si su celda es dudosa).
+  const compuesto = () => {
+    if (formato === 'TD3') return { s: chars[1].slice(0, 10).join('') + chars[1].slice(13, 20).join('') + chars[1].slice(21, 43).join(''), pos: [1, 43] };
+    if (formato === 'TD2') return { s: chars[1].slice(0, 10).join('') + chars[1].slice(13, 20).join('') + chars[1].slice(21, 35).join(''), pos: [1, 35] };
+    return { s: chars[0].slice(5, 30).join('') + chars[1].slice(0, 7).join('') + chars[1].slice(8, 15).join('') + chars[1].slice(18, 29).join(''), pos: [1, 29] };
+  };
+  let cc = compuesto();
+  if (digitoControlFn(cc.s) !== chars[cc.pos[0]][cc.pos[1]]) {
+    const celda = cel[cc.pos[0]] && cel[cc.pos[0]][cc.pos[1]];
+    if (celda && celda.conf < 0.93) {
+      const calc = digitoControlFn(cc.s);
+      if (celda.cands.slice(0, 4).some(k => forzarTipo(k.c, 'd') === calc)) {
+        chars[cc.pos[0]][cc.pos[1]] = calc;
+      }
+    }
+  }
+  return { lineas: chars.map(c => c.join('')), formato };
+}
+
+/* ---------- Pipeline completo de foto a texto MRZ ---------- */
+
+// Intenta la lectura tal cual; si no sale fiable y la foto está torcida,
+// reintenta con la inclinación corregida y se queda con la mejor de las dos.
+function ocrMrz(im, digitoControlFn) {
+  const r1 = ocrMrzDirecto(im, digitoControlFn);
+  const fiable = r => r.ok && r.formato && r.confianza > 0.93;
+  if (fiable(r1)) { r1.angulo = 0; return r1; }
+
+  const chica = reducir(im, 450);
+  const gc = aGris(chica);
+  const Mc = limpiarMascara(binarizar(gc.g, gc.w, gc.h), gc.w, gc.h);
+  const angulo = estimarInclinacion(Mc, gc.w, gc.h);
+  if (Math.abs(angulo) <= 0.7 || Math.abs(angulo) > 10) { r1.angulo = 0; return r1; }
+
+  const r2 = ocrMrzDirecto(rotarImagen(im, -angulo), digitoControlFn);
+  r2.angulo = -angulo;
+  const puntua = r => (r.ok ? 1 : 0) + (r.formato ? 2 : 0) + (r.confianza || 0);
+  if (puntua(r2) > puntua(r1)) return r2;
+  r1.angulo = 0;
+  return r1;
+}
+
+function ocrMrzDirecto(im, digitoControlFn) {
+  // Pasada 1: localizar las líneas en versión reducida (robusta al ruido).
+  const red = reducir(im, 900);
+  const esc = im.width / red.width;
+  const gr = aGris(red);
+  const Mr = limpiarMascara(binarizar(gr.g, gr.w, gr.h), gr.w, gr.h);
+  const bandasRed = encontrarLineas(Mr, gr.w, gr.h);
+  if (bandasRed.length < 2) {
+    return { ok: false, error: 'No se encuentran las líneas de la MRZ en la foto. Acerca el documento y encuadra la zona de las letras «<» dentro del marco.' };
+  }
+
+  // Pasada 2: clasificar a resolución completa, banda a banda.
+  const { g, w, h } = aGris(im);
+  const lineas = [], celdas = [], confs = [];
+  for (const [ry0, ry1] of bandasRed) {
+    const margen = Math.round((ry1 - ry0) * esc * 0.25);
+    const y0 = Math.max(0, Math.round(ry0 * esc) - margen);
+    const y1 = Math.min(h, Math.round(ry1 * esc) + margen);
+    // binariza solo la franja de la banda
+    const bh = y1 - y0;
+    const franja = new Float32Array(w * bh);
+    for (let y = 0; y < bh; y++)
+      for (let x = 0; x < w; x++) franja[y * w + x] = g[(y0 + y) * w + x];
+    let Mb = limpiarMascara(binarizar(franja, w, bh), w, bh);
+    // recorta verticalmente a la tinta de la banda (elimina el margen añadido)
+    let ty0 = 0, ty1 = bh;
+    const densY = [];
+    for (let y = 0; y < bh; y++) {
+      let s = 0;
+      for (let x = 0; x < w; x++) s += Mb[y * w + x];
+      densY.push(s / w);
+    }
+    while (ty0 < bh && densY[ty0] < 0.03) ty0++;
+    while (ty1 > ty0 && densY[ty1 - 1] < 0.03) ty1--;
+    if (ty1 - ty0 < 8) continue;
+    const r = leerLinea(Mb, w, ty0, ty1, 0, w);
+    if (!r) continue;
+    lineas.push(r.celdas.map(c => c.cands[0].c).join(''));
+    celdas.push(r.celdas);
+    confs.push(r.media);
+  }
+  if (lineas.length < 2) {
+    return { ok: false, error: 'No se pudo leer el texto. Prueba con más luz y sin inclinar el documento.' };
+  }
+  // Elige el conjunto de líneas que encaja en un formato ICAO, probando de
+  // más específico a menos: las 3 últimas (TD1), las 2 últimas (TD3/TD2),
+  // las 2 primeras. Así una banda espuria no rompe la detección.
+  const n = lineas.length;
+  const combos = [];
+  if (n >= 3) combos.push([n - 3, n]);
+  if (n >= 2) combos.push([n - 2, n]);
+  if (n >= 3) combos.push([0, 2]);
+  let elegido = null;
+  for (const [a, z] of combos) {
+    const lin = lineas.slice(a, z), cel = celdas.slice(a, z);
+    const len = lin[0].length;
+    if (!lin.every(l => l.length === len)) continue;
+    const numL = z - a;
+    if (!((numL === 3 && len === 30) || (numL === 2 && (len === 44 || len === 36)))) continue;
+    const r = autocorregir(lin.map(s => s), cel, digitoControlFn);
+    if (r.formato) {
+      elegido = { lineas: r.lineas, formato: r.formato, confs: confs.slice(a, z) };
+      break;
+    }
+  }
+  if (!elegido) {
+    // sin formato reconocible: devuelve la mejor pareja para que el usuario la corrija
+    const lin = lineas.slice(-2), cel = celdas.slice(-2);
+    const r = autocorregir(lin.map(s => s), cel, digitoControlFn);
+    elegido = { lineas: r.lineas, formato: r.formato, confs: confs.slice(-2) };
+  }
+  const confMedia = elegido.confs.reduce((a, b) => a + b, 0) / elegido.confs.length;
+  return { ok: true, lineas: elegido.lineas, formato: elegido.formato, confianza: confMedia };
+}
+
+/* ---------- Detección del documento en el encuadre ---------- */
+
+// Localiza la tarjeta/página (zona clara y grande) contra el fondo y evalúa
+// el encuadre: si se ven las cuatro esquinas, si ocupa suficiente y si el
+// fondo contrasta. Pensado para el anverso, donde no hay MRZ que leer.
+function detectarDocumento(im) {
+  const red = reducir(im, 320);
+  const { g, w, h } = aGris(red);
+
+  // umbral de Otsu sobre el histograma
+  const hist = new Float64Array(256);
+  for (let i = 0; i < g.length; i++) hist[Math.round(g[i])]++;
+  const total = g.length;
+  let sumaT = 0;
+  for (let i = 0; i < 256; i++) sumaT += i * hist[i];
+  let sumaB = 0, pesoB = 0, maxVar = -1, umbral = 128;
+  for (let t = 0; t < 256; t++) {
+    pesoB += hist[t];
+    if (!pesoB) continue;
+    const pesoF = total - pesoB;
+    if (!pesoF) break;
+    sumaB += t * hist[t];
+    const mB = sumaB / pesoB, mF = (sumaT - sumaB) / pesoF;
+    const v = pesoB * pesoF * (mB - mF) * (mB - mF);
+    if (v > maxVar) { maxVar = v; umbral = t; }
+  }
+
+  // separación clara entre documento y fondo?
+  const claro = new Uint8Array(w * h);
+  let nClaro = 0;
+  for (let i = 0; i < w * h; i++) { if (g[i] > umbral) { claro[i] = 1; nClaro++; } }
+  const res = { ok: false, puntos: [] };
+  const punto = (nivel, titulo, detalle) => res.puntos.push({ nivel, titulo, detalle });
+
+  if (nClaro / (w * h) > 0.93 || nClaro / (w * h) < 0.04 || maxVar / (total * total) < 2) {
+    punto('aviso', 'No distingo el documento del fondo',
+      'Coloca el documento sobre una superficie oscura y lisa (una mesa, una prenda oscura) para que contraste.');
+    return res;
+  }
+
+  // componente clara más grande (búsqueda por pila)
+  const lab = new Int32Array(w * h);
+  let mejorId = 0, mejorN = 0, id = 0;
+  const pila = [];
+  const stats = {};
+  for (let s = 0; s < w * h; s++) {
+    if (!claro[s] || lab[s]) continue;
+    id++;
+    stats[id] = { n: 0, x0: w, x1: 0, y0: h, y1: 0 };
+    pila.push(s); lab[s] = id;
+    while (pila.length) {
+      const p = pila.pop();
+      const py = (p / w) | 0, px = p % w;
+      const st = stats[id];
+      st.n++;
+      if (px < st.x0) st.x0 = px; if (px > st.x1) st.x1 = px;
+      if (py < st.y0) st.y0 = py; if (py > st.y1) st.y1 = py;
+      if (px > 0 && claro[p - 1] && !lab[p - 1]) { lab[p - 1] = id; pila.push(p - 1); }
+      if (px < w - 1 && claro[p + 1] && !lab[p + 1]) { lab[p + 1] = id; pila.push(p + 1); }
+      if (py > 0 && claro[p - w] && !lab[p - w]) { lab[p - w] = id; pila.push(p - w); }
+      if (py < h - 1 && claro[p + w] && !lab[p + w]) { lab[p + w] = id; pila.push(p + w); }
+    }
+    if (stats[id].n > mejorN) { mejorN = stats[id].n; mejorId = id; }
+  }
+  const st = stats[mejorId];
+  const areaRel = st.n / (w * h);
+  const margen = Math.max(2, Math.round(Math.min(w, h) * 0.015));
+  const cortes = [];
+  if (st.x0 <= margen) cortes.push('izquierdo');
+  if (st.x1 >= w - 1 - margen) cortes.push('derecho');
+  if (st.y0 <= margen) cortes.push('superior');
+  if (st.y1 >= h - 1 - margen) cortes.push('inferior');
+
+  if (areaRel > 0.72 && cortes.length >= 3) {
+    // la "tarjeta" es casi toda la imagen tocando varios bordes: en realidad
+    // el fondo es tan claro como el documento y se han fundido
+    punto('aviso', 'No distingo el documento del fondo',
+      'El fondo es casi tan claro como el documento. Ponlo sobre una superficie oscura y lisa para que contraste.');
+  } else if (cortes.length) {
+    punto('mal', 'El documento se sale del encuadre',
+      'Toca el borde ' + cortes.join(' y ') + '. Las verificaciones exigen las cuatro esquinas visibles: aléjate un poco y céntralo.');
+  } else if (areaRel < 0.18) {
+    punto('mal', 'El documento se ve pequeño',
+      'Ocupa poco de la imagen y el texto saldrá ilegible. Acércate hasta que llene la mayor parte del marco.');
+  } else if (areaRel < 0.30) {
+    punto('aviso', 'Puedes acercarte más',
+      'El documento cabe entero pero queda margen de sobra. Cuanto más llene el marco, más legible será.');
+  } else {
+    punto('bien', 'Encuadre correcto',
+      'Las cuatro esquinas están dentro y el documento ocupa bien el marco.');
+    res.ok = true;
+  }
+  res.areaRel = +areaRel.toFixed(3);
+  res.cortes = cortes;
+  // caja del documento en coordenadas de la imagen original, con un pequeño margen
+  const escX = im.width / w, escY = im.height / h;
+  const mx = (st.x1 - st.x0) * 0.03, my = (st.y1 - st.y0) * 0.03;
+  res.bbox = {
+    x0: Math.max(0, Math.round((st.x0 - mx) * escX)),
+    y0: Math.max(0, Math.round((st.y0 - my) * escY)),
+    x1: Math.min(im.width, Math.round((st.x1 + 1 + mx) * escX)),
+    y1: Math.min(im.height, Math.round((st.y1 + 1 + my) * escY))
+  };
+  return res;
+}
+
+/* ---------- Análisis de calidad de la foto ---------- */
+
+function analizarCalidad(im, perfil) {
+  // perfil 'documento' (por defecto): página con MRZ, texto denso.
+  // perfil 'tarjeta': anverso de una tarjeta, con menos texto por superficie —
+  // la varianza del laplaciano es naturalmente menor y los umbrales bajan.
+  const esTarjeta = perfil === 'tarjeta';
+  const UMBRAL_MAL = esTarjeta ? 150 : 1300;
+  const UMBRAL_AVISO = esTarjeta ? 350 : 2300;
+  const { g, w, h } = aGris(im);
+  const d = im.data;
+  const res = { puntos: [], apta: true };
+  const punto = (nivel, titulo, detalle) => {
+    res.puntos.push({ nivel, titulo, detalle });
+    if (nivel === 'mal') res.apta = false;
+  };
+
+  // Resolución
+  if (Math.min(w, h) < 600) {
+    punto('mal', 'Resolución baja', 'La imagen tiene ' + w + '×' + h + ' píxeles. Los sistemas de verificación suelen pedir al menos 600 px en el lado corto. Usa la cámara trasera y acércate más.');
+  } else {
+    punto('bien', 'Resolución suficiente', w + '×' + h + ' píxeles.');
+  }
+
+  // Exposición (histograma primero: sus percentiles normalizan la nitidez)
+  const hist = new Float64Array(256);
+  for (let i = 0; i < g.length; i += 2) hist[Math.round(g[i])]++;
+  let total = 0; for (let i = 0; i < 256; i++) total += hist[i];
+  let acc = 0, p5 = 0, p50 = 0, p95 = 0;
+  for (let i = 0; i < 256; i++) {
+    acc += hist[i];
+    if (!p5 && acc > total * 0.05) p5 = i;
+    if (!p50 && acc > total * 0.5) p50 = i;
+    if (!p95 && acc > total * 0.95) p95 = i;
+  }
+  if (p50 < 60) punto('mal', 'Foto oscura', 'La imagen está subexpuesta. Busca luz natural de día, cerca de una ventana, y evita la sombra de tu propio cuerpo.');
+  else if (p50 > 238) punto('aviso', 'Foto muy clara', 'La imagen está algo quemada. Aleja el documento de la luz directa.');
+  else if (p95 - p5 < 70) punto('aviso', 'Poco contraste', 'El texto y el fondo se parecen demasiado. Más luz suele arreglarlo.');
+  else punto('bien', 'Exposición correcta', 'Luz y contraste adecuados.');
+
+  // Nitidez: varianza del laplaciano sobre imagen prefiltrada (caja 3x3 contra
+  // el ruido del sensor) y normalizada por el contraste (una foto oscura pero
+  // enfocada no debe marcarse como borrosa).
+  const paso = Math.max(1, Math.floor(Math.min(w, h) / 700));
+  const box = (x, y) => {
+    let s = 0;
+    for (let dy = -paso; dy <= paso; dy += paso)
+      for (let dx = -paso; dx <= paso; dx += paso) s += g[(y + dy) * w + (x + dx)];
+    return s / 9;
+  };
+  let suma = 0, suma2 = 0, n = 0;
+  const p2 = paso * 2, borde = paso * 3;
+  const difs = [];
+  for (let y = borde; y < h - borde; y += p2) {
+    for (let x = borde; x < w - borde; x += p2) {
+      const c0 = box(x, y);
+      const lap = 4 * c0 - box(x - p2, y) - box(x + p2, y)
+                - box(x, y - p2) - box(x, y + p2);
+      suma += lap; suma2 += lap * lap; n++;
+      difs.push(Math.abs(box(x + paso, y) - c0));
+    }
+  }
+  // estimación de ruido: mediana de diferencias entre vecinos (robusta a bordes)
+  difs.sort((a, b) => a - b);
+  const sigma = difs[difs.length >> 1] / 0.6745 / Math.SQRT2;
+  const varRuido = 20 * sigma * sigma;
+  const contraste = Math.max(0.08, (p95 - p5) / 255);
+  const varLap = Math.max(0, suma2 / n - (suma / n) * (suma / n) - varRuido) / (contraste * contraste);
+  if (varLap < UMBRAL_MAL) punto('mal', 'Foto borrosa', 'Los bordes del texto no están definidos. Apoya el teléfono o el documento en algo firme, deja que enfoque y dispara sin moverte.');
+  else if (varLap < UMBRAL_AVISO) punto('aviso', 'Nitidez justa', 'Se lee, pero un sistema estricto podría rechazarla. Si puedes, repite la foto con mejor enfoque.');
+  else punto('bien', 'Nitidez buena', 'Los bordes del texto están bien definidos.');
+
+  // Reflejos: bloques saturados grandes
+  const bx = 24, celW = Math.ceil(w / bx), celH = Math.ceil(h / bx);
+  let bloquesQuemados = 0, totalBloques = 0;
+  for (let cy = 0; cy < celH; cy++) for (let cx = 0; cx < celW; cx++) {
+    let quemados = 0, nn = 0;
+    for (let y = cy * bx; y < Math.min(h, (cy + 1) * bx); y += 2)
+      for (let x = cx * bx; x < Math.min(w, (cx + 1) * bx); x += 2) {
+        if (g[y * w + x] > 249) quemados++;
+        nn++;
+      }
+    totalBloques++;
+    if (nn > 0 && quemados / nn > 0.75) bloquesQuemados++;
+  }
+  const fracQuemada = bloquesQuemados / totalBloques;
+  if (fracQuemada > 0.02) punto('mal', 'Reflejo fuerte', 'Hay un brillo que tapa parte del documento. Inclina ligeramente el documento o apaga el flash; la luz lateral indirecta funciona mejor.');
+  else if (fracQuemada > 0.004) punto('aviso', 'Reflejo leve', 'Hay un pequeño brillo. Comprueba que no tape ningún dato antes de usar la foto.');
+  else punto('bien', 'Sin reflejos', 'No se detectan brillos que tapen datos.');
+
+  // Dominante de color (balance de blancos)
+  let sr = 0, sg = 0, sb = 0, np = 0;
+  for (let i = 0; i < d.length; i += 16) { sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; np++; }
+  sr /= np; sg /= np; sb /= np;
+  const media = (sr + sg + sb) / 3;
+  const desv = Math.max(Math.abs(sr - media), Math.abs(sg - media), Math.abs(sb - media));
+  if (desv > 34) {
+    const dominante = sr > sb + 20 ? 'anaranjada (luz cálida de interior)' : (sb > sr + 20 ? 'azulada (luz fría o sombra)' : 'verdosa');
+    punto('aviso', 'Dominante de color', 'La foto tiene una tonalidad ' + dominante + '. Los colores del documento no se ven fieles; con luz natural de día quedará neutra.');
+  } else {
+    punto('bien', 'Colores neutros', 'El balance de color es correcto; los colores del documento se ven fieles.');
+  }
+
+  res.metricas = { nitidez: Math.round(varLap), mediana: p50, reflejo: +(fracQuemada * 100).toFixed(2), resolucion: w + '×' + h };
+  return res;
+}
+
+
+</script>
+<script>
+var PLANTILLAS_JSON = {"chars": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<", "n": 16, "numFonts": 5, "data": "AAAAAAAG5f/1DAAAAAAAAAAAAAAAVf/4/2sAAAAAAAAAAAAAALz/Yf/VAAAAAAAAAAAAACT/7QDV/zkAAAAAAAAAAACM/5wAh/+kAAAAAAAAAAAG8f9JADf/+AwAAAAAAAAAU//tBQAA4f9jAAAAAAAAALb/hgAAAHr/vAAAAAAAABb5/yQAAAAW//8dAAAAAAB6/+FJSUlJSdX/gAAAAAAA4////////////+oAAAAAQ//1kpKSkpKSkvX/SQAAAJj/sAAAAAAAAACq/54AAAbw/1MAAAAAAAAAU//wDABc//EGAAAAAAAAAAbx/1wAyf+YAAAAAAAAAAAAmP/JAAAA////////7ciHGAAAAAAAAP//49XV1fj///ExAAAAAAD//1UAAAAAPeD/tgAAAAAA//9VAAAAAABt/+cAAAAAAP//VQAAAAAAXv/gAAAAAAD//1UAAAAAALD/ngAAAAAA//+GSUlJc7z/yBUAAAAAAP//////////rB4AAAAAAAD//6qAgICAuPn/hgAAAAAA//9VAAAAAAAv7f9nAAAAAP//VQAAAAAAAHn/4wAAAAD//1UAAAAAAABb//8AAAAA//9VAAAAAAAAnP/jAAAAAP//VQAAAAAMeP//dAAAAAD//+PV1dXc////pAAAAAAA/////////+GnVQAAAAAAAAAAEILO9f/nnCoAAAAAAAAAJeD//9C78//1TwAAAAAAAM7/2ysAAAek//geAAAAAE7//zQAAAAABcv/jQAAAACn/8YAAAAAAAA0TwUAAAAA1v+HAAAAAAAAAAAAAAAAAP//bQAAAAAAAAAAAAAAAAD//20AAAAAAAAAAAAAAAAA//9tAAAAAAAAAAAAAAAAAPX/bQAAAAAAAAAAAAAAAADQ/5IAAAAAAAAAAAAAAAAAkv/QAAAAAAAAH9V9AAAAADn//0QAAAAAAKz/rAAAAAAAqv/tMgAAAIz/+CoAAAAAABLG///Vtu3/708AAAAAAAAABW3I7//noSQAAAAAAAD/////+tWcPwAAAAAAAAAA///c1e3///+jBgAAAAAAAP//KwAAGn36/5wAAAAAAAD//ysAAAAAYf//MQAAAAAA//8rAAAAAADP/40AAAAAAP//KwAAAAAAcv/JAAAAAAD//ysAAAAAAEn/6gAAAAAA//8rAAAAAAAr//8AAAAAAP//KwAAAAAAK///AAAAAAD//ysAAAAAAE//4AAAAAAA//8rAAAAAACA/7wAAAAAAP//KwAAAAAF2/94AAAAAAD//ysAAAAAZ//5JAAAAAAA//8rAAAQePr/jQAAAAAAAP//3NXh////owYAAAAAAAD//////+WsRAAAAAAAAAAA/////////////20AAAAAAP//3NXV1dXV1dVbAAAAAAD//ysAAAAAAAAAAAAAAAAA//8rAAAAAAAAAAAAAAAAAP//KwAAAAAAAAAAAAAAAAD//ysAAAAAAAAAAAAAAAAA//9JJCQkJCQkHwAAAAAAAP///////////9sAAAAAAAD//7iqqqqqqqqSAAAAAAAA//8rAAAAAAAAAAAAAAAAAP//KwAAAAAAAAAAAAAAAAD//ysAAAAAAAAAAAAAAAAA//8rAAAAAAAAAAAAAAAAAP//KwAAAAAAAAAAAAAAAAD//9zV1dXV1dXV1QAAAAAA//////////////8AAAAAAP//////////////AAAAAAD//+PV1dXV1dXV1QAAAAAA//9VAAAAAAAAAAAAAAAAAP//VQAAAAAAAAAAAAAAAAD//1UAAAAAAAAAAAAAAAAA//9VAAAAAAAAAAAAAAAAAP//VQAAAAAAAAAAAAAAAAD//4ZJSUlJSUlJMQAAAAAA/////////////6oAAAAAAP//tpKSkpKSkpJhAAAAAAD//1UAAAAAAAAAAAAAAAAA//9VAAAAAAAAAAAAAAAAAP//VQAAAAAAAAAAAAAAAAD//1UAAAAAAAAAAAAAAAAA//9VAAAAAAAAAAAAAAAAAP//VQAAAAAAAAAAAAAAAAAAAB+X2//6y20FAAAAAAAAADTv//XBy///sQUAAAAAAAbh/8IMAAAx7f9zAAAAAABT//AVAAAAAFP/1QAAAAAAp/+cAAAAAAAARAUAAAAAANb/YwAAAAAAAAAAAAAAAAD//0kAAAAAAAAAAAAAAAAA//9JAAAfbW1tbW0AAAAAAP//SQAASf//////AAAAAAD1/0kAAB9tbYL//wAAAAAA0P9tAAAAAAAk//8AAAAAAJL/rAAAAAAAJP//AAAAAAA5//okAAAAACT//wAAAAAAALb/2xgAAAZt//8AAAAAAAAf4P/1xsHv//qXAAAAAAAAABCH1f/60IcfAAAAAAAA//9VAAAAAABV//8AAAAAAP//VQAAAAAAVf//AAAAAAD//1UAAAAAAFX//wAAAAAA//9VAAAAAABV//8AAAAAAP//VQAAAAAAVf//AAAAAAD//1UAAAAAAFX//wAAAAAA//+GSUlJSUmG//8AAAAAAP//////////////AAAAAAD//6qAgICAgKr//wAAAAAA//9VAAAAAABV//8AAAAAAP//VQAAAAAAVf//AAAAAAD//1UAAAAAAFX//wAAAAAA//9VAAAAAABV//8AAAAAAP//VQAAAAAAVf//AAAAAAD//1UAAAAAAFX//wAAAAAA//9VAAAAAABV//8AAAAAAAD/////////////AAAAAAAA1dXV4f//4dXV1QAAAAAAAAAAAEn//yQAAAAAAAAAAAAAAABJ//8kAAAAAAAAAAAAAAAASf//JAAAAAAAAAAAAAAAAEn//yQAAAAAAAAAAAAAAABJ//8kAAAAAAAAAAAAAAAASf//JAAAAAAAAAAAAAAAAEn//yQAAAAAAAAAAAAAAABJ//8kAAAAAAAAAAAAAAAASf//JAAAAAAAAAAAAAAAAEn//yQAAAAAAAAAAAAAAABJ//8kAAAAAAAAAAAAAAAASf//JAAAAAAAAAAAANXV1eH//+HV1dUAAAAAAAD/////////////AAAAAAAAAAAAkv//////AAAAAAAAAAAAAHrV1dv//wAAAAAAAAAAAAAAAAAk//8AAAAAAAAAAAAAAAAAJP//AAAAAAAAAAAAAAAAACT//wAAAAAAAAAAAAAAAAAk//8AAAAAAAAAAAAAAAAAJP//AAAAAAAAAAAAAAAAACT//wAAAAAAAAAAAAAAAAAk//8AAAAAAAAAAAAAAAAAJP//AAAAAAAAAAAAAAAAACT//wAAAAAAAABhkhIAAAAk//8AAAAAAAAA2/9YAAAATv/QAAAAAAAAAIL/4CQAFdD/ggAAAAAAAAAM2///1fn/2wwAAAAAAAAAABqX6v/qoRoAAAAAAAAA//8rAAAAAAXC/8sKAAAAAP//KwAAAACe/+0SAAAAAAD//ysAAABo//M0AAAAAAAA//8rAAA3+flHAAAAAAAAAP//KwAa4P9jAAAAAAAAAAD//ysGwv+SAAAAAAAAAAAA//8rkv/BBQAAAAAAAAAAAP//pP//6hoAAAAAAAAAAAD////b2/+2AAAA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AIb/6gwAAAAAAMH/jAAAAAAF2/9jAAAAAAD1/z4AAAAAAH3/rAAAAAAA//8pAAAAAABY/9sAAAAAAOX/WAAAAAAAbf/6AAAAAACc/8YFAAAAENX//wAAAAAAKvj/sB4APc/h//8AAAAAAABP6v/////VTv/gAAAAAAAAABVjkoxTBVj/xgAAAAAAAAAAAAAAAACc/4IAAAAAAEmSYwAAAAAV9f8qAAAAAABb/+0kAAAGwv+jAAAAAAAABcL/9aek5f/LEgAAAAAAAAAGeND//9B9BQAAAAAAAAAAAAAAAAAAAAAACWbMAAAAAAAAAAAAAAAUeub//wAAAAAAAAAAADOj9f//9ZkAAAAAAAAAR8T////rgBQAAAAAABRw4P///8xcCgAAAAAAH5n1////sz0AAAAAAAAArf////WZKQAAAAAAAAAAAP//wF4RAAAAAAAAAAAAAAD//91wCgAAAAAAAAAAAAAAuP////WZKQAAAAAAAAAAAAAfmfX///+zPQAAAAAAAAAAAAAUcOD////MXAoAAAAAAAAAAAAAUsT////rdwoAAAAAAAAAAAAAPaP1///1jwAAAAAAAAAAAAAAFHrm//8AAAAAAAAAAAAAAAAACWbMAAAAAAAAyf///8kAAAAAAAAAAAAAJP//////JAAAAAAAAAAAAHT//9X//4AAAAAAAAAAAADO//9V///cAAAAAAAAAAAk///lAOD//y8AAAAAAAAAc///pACe//9zAAAAAAAAAMH//14AXv//wQAAAAAAAB////8VABX///8fAAAAAAB5///HAAAAx///eQAAAAAA1f//z5KSks///9UAAAAAKv//////////////KgAAAHj//////////////3gAAADJ//+VAAAAAACV///JAAAf////SQAAAAAAQ////x8Aef//8wcAAAAAAADz//95ANX//7YAAAAAAAAAsf//1QAAAP/////////gpDkAAAAAAAD////////////5PQAAAAAA////wJKStv///8sAAAAAAP///20AAACe////AAAAAAD///9tAAAAbf///wAAAAAA////bQAAAJ7//8MAAAAAAP///8CSkqz//+80AAAAAAD//////////8k5AAAAAAAA/////////////5IAAAAAAP///20AAAVJ7f//cgAAAAD///9tAAAAAIf//9UAAAAA////bQAAAACA///6AAAAAP///20AAAAGzv//1QAAAAD////AkpKX1f///4cAAAAA/////////////9UMAAAAAP/////////1zoIKAAAAAAAAAApyy/X/4JIaAAAAAAAAAB/V////////7zQAAAAAAAC2////27b5///bBgAAAAA5////kgAANPr//14AAAAAjf//5QUAAACM/9VtAAAAAMb//5wAAAAAFRUAAAAAAADg//9tAAAAAAAAAAAAAAAA////bQAAAAAAAAAAAAAAAP///20AAAAAAAAAAAAAAADb//94AAAAAAAAAAAAAAAAwf//oQAAAAAFWCQAAAAAAIL///AKAAAAU///5QAAAAAk////oQUAH+X//4cAAAAAAJ7////nsPP//+0SAAAAAAAQxv////////VOAAAAAAAAAAVjwe//5ZwkAAAAAAAA////////1Zw3AAAAAAAAAP///////////5gAAAAAAAD////JocL/////jAAAAAAA////gAAAK9v///8xAAAAAP///4AAAAA+////jQAAAAD///+AAAAAAOP//8IAAAAA////gAAAAACq///gAAAAAP///4AAAAAAkv///wAAAAD///+AAAAAAKP///kAAAAA////gAAAAACw///bAAAAAP///4AAAAAA6v//tgAAAAD///+AAAAAU////3gAAAAA////gAAAMu3///gYAAAAAP///9u2wv////90AAAAAAD///////////+AAAAAAAAA////////25w3AAAAAAAAAP//////////////bQAAAAD//////////////20AAAAA////27a2tra2trZOAAAAAP///4AAAAAAAAAAAAAAAAD///+AAAAAAAAAAAAAAAAA////gAAAAAAAAAAAAAAAAP///7ZtbW1tbW1bAAAAAAD/////////////1QAAAAAA/////////////9UAAAAAAP///6RJSUlJSUk3AAAAAAD///+AAAAAAAAAAAAAAAAA////gAAAAAAAAAAAAAAAAP///4AAAAAAAAAAAAAAAAD////btra2tra2trEAAAAA////////////////AAAAAP///////////////wAAAAD//////////////wAAAAAA//////////////8AAAAAAP///9W2tra2tra2AAAAAAD///9tAAAAAAAAAAAAAAAA////bQAAAAAAAAAAAAAAAP///20AAAAAAAAAAAAAAAD///9tAAAAAAAAAAAAAAAA////1ba2tra2tpwAAAAAAP/////////////bAAAAAAD/////////////1gAAAAAA////bQAAAAAAAAAAAAAAAP///20AAAAAAAAAAAAAAAD///9tAAAAAAAAAAAAAAAA////bQAAAAAAAAAAAAAAAP///20AAAAAAAAAAAAAAAD///9tAAAAAAAAAAAAAAAAAAAGaMb1/+qkNAAAAAAAAAAf2/////////pJAAAAAAAAw////+Gw+f//5wwAAAAAOf///5cFADT5//9oAAAAAJL///AKAAAAntChTgAAAADG//+2AAAAAAAAAAAAAAAA4P//kgAAAAAAAAAAAAAAAP///5IAH9vb29vb2wAAAAD///+SACT///////8AAAAA2///lwAatra2////AAAAAMH//8YAAAAAAP///wAAAAB4///6HwAAAAD///8AAAAAH/r//7YKAABV////AAAAAACS////7cjn////7QAAAAAACrb/////////yyoAAAAAAAAAU7vv/+WqUwAAAAAAAP///20AAABt////AAAAAAD///9tAAAAbf///wAAAAAA////bQAAAG3///8AAAAAAP///20AAABt////AAAAAAD///9tAAAAbf///wAAAAAA////bQAAAG3///8AAAAAAP///9W2trbV////AAAAAAD//////////////wAAAAAA//////////////8AAAAAAP///4IkJCSC////AAAAAAD///9tAAAAbf///wAAAAAA////bQAAAG3///8AAAAAAP///20AAABt////AAAAAAD///9tAAAAbf///wAAAAAA////bQAAAG3///8AAAAAAP///20AAABt////AAAAAAD//////////////wAAAAAA//////////////8AAAAAALa2tsL////Otra2AAAAAAAAAAAr////VQAAAAAAAAAAAAAAK////1UAAAAAAAAAAAAAACv///9VAAAAAAAAAAAAAAAr////VQAAAAAAAAAAAAAAK////1UAAAAAAAAAAAAAACv///9VAAAAAAAAAAAAAAAr////VQAAAAAAAAAAAAAAK////1UAAAAAAAAAAAAAACv///9VAAAAAAAAAAAAAAAr////VQAAAAAAAAAAtra2wv///862trYAAAAAAP//////////////AAAAAAD//////////////wAAAAAAAAAAK/////////8AAAAAAAAAACv/////////AAAAAAAAAAAftra22////wAAAAAAAAAAAAAAAID///8AAAAAAAAAAAAAAACA////AAAAAAAAAAAAAAAAgP///wAAAAAAAAAAAAAAAID///8AAAAAAAAAAAAAAACA////AAAAAAAAAAAAAAAAgP///wAAAAAAAAAAAAAAAID///8AAAAAAAUrTjcAAACA///6AAAAAADt//+xAAAAqv//2wAAAAAAsf//+TQAH/P//7EAAAAAAD7////1tur///9OAAAAAAAAef////////+VAAAAAAAAAABOvO//77xOAAAAAAAA////gAAAAACx////YwAAAP///4AAAABr////nAAAAAD///+AAAA5+f//wQYAAAAA////gAAH1f//6hgAAAAAAP///4AApP//9TcAAAAAAAD///+AW////2cAAAAAAAAA////pO///54AAAAAAAAAAP////////+2AAAAAAAAAAD//////////1UAAAAAAAAA/////8vn///gDAAAAAAAAP///+oSXP///5UAAAAAAAD///+AAADG////OQAAAAAA////gAAAN////88AAAAAAP///4AAAACk////dAAAAAD///+AAAAADvP///geAAAA////gAAAAABy////sQAAAAD///+qAAAAAAAAAAAAAAAA////qgAAAAAAAAAAAAAAAP///6oAAAAAAAAAAAAAAAD///+qAAAAAAAAAAAAAAAA////qgAAAAAAAAAAAAAAAP///6oAAAAAAAAAAAAAAAD///+qAAAAAAAAAAAAAAAA////qgAAAAAAAAAAAAAAAP///6oAAAAAAAAAAAAAAAD///+qAAAAAAAAAAAAAAAA////qgAAAAAAAAAAAAAAAP///6oAAAAAAAAAAAAAAAD///+qAAAAAAAAAAAAAAAA////57a2tra2trYAAAAAAP//////////////AAAAAAD//////////////wAAAAAA/////yUAAAb1////AAAAAP////9rAABA/////wAAAAD///X/vAAAkv/1//8AAAAA///P//gGANz/1f//AAAAAP//sf//RB///7b//wAAAAD//5Lt/4Bh/+2S//8AAAAA//+SrP/Bof+xkv//AAAAAP//kmj/6sv/aJL//wAAAAD//5Ik///z/zCS//8AAAAA//+SAOH//+cAkv//AAAAAP//kgCV//+cAJL//wAAAAD//5IAQ7a2SQCS//8AAAAA//+SAAAAAAAAkv//AAAAAP//kgAAAAAAAJL//wAAAAD//5IAAAAAAACS//8AAAAA//+SAAAAAAAAkv//AAAAAP////UPAAAA////AAAAAAD/////YQAAAP///wAAAAAA/////7wAAAD///8AAAAAAP//////HQAA////AAAAAAD//+X//4AAAP///wAAAAAA///C1f/qBgD///8AAAAAAP//233//0kA////AAAAAAD//+of//+sAP///wAAAAAA////ALz/+Qzz//8AAAAAAP///wBo//9j2///AAAAAAD///8AEvj/vNX//wAAAAAA////AACk//rQ//8AAAAAAP///wAAOf//////AAAAAAD///8AAADV/////wAAAAAA////AAAAev////8AAAAAAP///wAAACT/////AAAAAAAAABWH0P//0IcVAAAAAAAAACrg////////5SoAAAAAAADV////wrz////VAAAAAABO////WAAAU////04AAAAAp///xgAAAADG//+nAAAAAOD//30AAAAAff//4AAAAAD///9TAAAAAFP///8AAAAA////SQAAAABJ////AAAAAP///0kAAAAASf///wAAAAD///9YAAAAAFj///8AAAAA1v//fQAAAAB9///WAAAAAKH//8YAAAAAxv//oQAAAABJ////XgAAXv///0kAAAAAAMn////Iwv///88AAAAAAAAf4P///////+AfAAAAAAAAABCC0P//0IcQAAAAAAAA/////////9unSQAAAAAAAP////////////+eAAAAAAD////btrbL/////2EAAAAA////gAAAADLz///VAAAAAP///4AAAAAAof///wAAAAD///+AAAAAAJj///8AAAAA////gAAAAAbb///bAAAAAP///7ZtbX3b////aAAAAAD/////////////vAAAAAAA///////////lgAUAAAAAAP///6pVVVUrAAAAAAAAAAD///+AAAAAAAAAAAAAAAAA////gAAAAAAAAAAAAAAAAP///4AAAAAAAAAAAAAAAAD///+AAAAAAAAAAAAAAAAA////gAAAAAAAAAAAAAAAAAAABHjV/PjJYAAAAAAAAAAAALP///////+KAAAAAAAAAFv//7wvNdP//CsAAAAAAAC6//kVAABF//+RAAAAAAAA7v/NAAAAB///ywAAAAAAAP//qgAAAADf/98AAAAAAAD//6oAAAAA3//fAAAAAAAA/P+2AAAAAO3/2wAAAAAAANb/4AAAABn//7EAAAAAAACV//9EAAB1//9sAAAAAAAAL/v/7YSO9v/mDgAAAAAAAABK8v/////mMgAAAAAAAAAAABWI//+uCAAAAAAAAAAAAAAABOP/7EoGCwAAAAAAAAAAAABZ//////8AAAAAAAAAAAAAAFXN//nYAAAAAP/////////nu20KAAAAAAD/////////////1RUAAAAA////27a2wfP///+qAAAAAP///4AAAAAOz////xIAAAD///+AAAAAAHL///8kAAAA////gAAAAAB5////JAAAAP///4AAAAA35f//4QAAAAD////t29vq////+j0AAAAA////////////1TcAAAAAAP///+3b5///9RgAAAAAAAD///+AAB35//+xAAAAAAAA////gAAAh////0kAAAAAAP///4AAAAzx///VBwAAAAD///+AAAAAZ////4AAAAAA////gAAAAADP///4JAAAAP///4AAAAAASf///7EAAAAAAAxyxu///9CSJAAAAAAAADTn//////////lOAAAAAADV///zjFWM8///8wwAAAAp////SQAAADn///9jAAAASf///ykAAAAAeG1YKgAAABr///+7JAAAAAAAAAAAAAAAp//////Vl1MKAAAAAAAAABCe////////9ZIaAAAAAAAAADGe8///////2xIAAAAAAAAAAAU9feD///+cAAAAAAAAAAAAAAAFtv//8AAAAH2hwmMAAAAAAF7///8AAAC2///vLwAAAACn///WAAAAMf////m2gJjV////ZwAAAABo+f//////////pwUAAAAAABiCy/X//9WcPQAAAAAA/////////////////wAAAP////////////////8AAAC2tra2y////8u2tra2AAAAAAAAAEn///9JAAAAAAAAAAAAAABJ////SQAAAAAAAAAAAAAASf///0kAAAAAAAAAAAAAAEn///9JAAAAAAAAAAAAAABJ////SQAAAAAAAAAAAAAASf///0kAAAAAAAAAAAAAAEn///9JAAAAAAAAAAAAAABJ////SQAAAAAAAAAAAAAASf///0kAAAAAAAAAAAAAAEn///9JAAAAAAAAAAAAAABJ////SQAAAAAAAAAAAAAASf///0kAAAAAAAAAAAAAAEn///9JAAAAAAAAAAD///9JAAAASf///wAAAAAA////SQAAAEn///8AAAAAAP///0kAAABJ////AAAAAAD///9JAAAASf///wAAAAAA////SQAAAEn///8AAAAAAP///0kAAABJ////AAAAAAD///9JAAAASf///wAAAAAA////SQAAAEn///8AAAAAAP///0kAAABJ////AAAAAAD///9JAAAASf///wAAAAAA+v//UwAAAFj///UAAAAAANv//3kAAACA///PAAAAAACn///GBQAQ4P//kgAAAAAAPv///+C27///+i8AAAAAAACk/////////4AAAAAAAAAABW3L+v/vtk4AAAAAAMn//+UAAAAAAAAA2///yQBc////OQAAAAAAK////2sADPX//4wAAAAAAID///oSAACw///cAAAAAADO//+wAAAAY////zEAAAAl////YwAAABL4//+HAAAAef///xIAAAAAqv//2wAAAMn//7YAAAAAAEn///8vAB////9VAAAAAAAA7f//cwBn///tBwAAAAAAAJf//7sArP//nAAAAAAAAABD///5B+3//08AAAAAAAAABe3//4z///MKAAAAAAAAAACV///4//+jAAAAAAAAAAAAN///////PQAAAAAAAAAAAADO////3AAAAAAAAAAAAAAAdP///4AAAAAAAADn//8+AAAAAAAAAD7//+cAwP//WwAAAAAAAABb//+4AJL//3gAAAAAAAAAeP//kgBj//+YAAAAAAAAAJL//2MAPf//tgAAbZJtAAC2//83AA7//9sAAO3/8wAAz///DgAA5f/1AD3///9JAOr/5QAAAMH//xmY////ngz//8EAAACY//854//q/+or//+YAAAAeP//ev//bf//ev//cgAAAE///8D/8wDz/8D//08AAAAp/////7sAu//5//8pAAAABv////+AAHn/////BgAAAADb////RABE////2wAAAAAAqv///wwADP///6oAAAAAAIb//8MAAADD//+GAAAAHvX//54AAAAAAJj//+8eAAB6////RwAAAED///9tAAAABc///+EQAArb///DBQAAAAAk+f//hgCA///zHQAAAAAAAHj///VJ9f//bQAAAAAAAAAGzv//////xwAAAAAAAAAAADH5////7R4AAAAAAAAAAAAAjP///24AAAAAAAAAAAAAHfH////jDgAAAAAAAAAAALz//////6oAAAAAAAAAAGH///+A////VQAAAAAAABjq//+nAKH//9sMAAAAAACq///4HgAY8f//nAAAAABT////bgAAAGf///9JAAAH5///wAAAAAAAuf//4QcAnv//9SUAAAAAAB71//+eAADQ///BAAAAAAAAwf//ywAAQ////zcAAAAAQ////0MAAACw///BAAAAAMH//6oAAAAAHfP//0AAAE7///MdAAAAAACC///PBQXb//99AAAAAAAADOf//1th///nDAAAAAAAAABt///Q4P//aAAAAAAAAAAABdD/////0AUAAAAAAAAAAABJ/////0MAAAAAAAAAAAAAANv//8IAAAAAAAAAAAAAAADV//+qAAAAAAAAAAAAAAAA1f//qgAAAAAAAAAAAAAAANX//6oAAAAAAAAAAAAAAADV//+qAAAAAAAAAAAAAAAA1f//qgAAAAAAAAAAAAAAANX//6oAAAAAAAAAACT/////////////kgAAAAAk/////////////5IAAAAAGra2tra2ttv///9tAAAAAAAAAAAAAAzh///JAAAAAAAAAAAAAACh///1JAAAAAAAAAAAAABJ////bQAAAAAAAAAAAAAV5f//sAAAAAAAAAAAAAAAu///0AYAAAAAAAAAAAAAbf//+TEAAAAAAAAAAAAAMfX//30AAAAAAAAAAAAADNz//8kAAAAAAAAAAAAAAKH///UkAAAAAAAAAAAAAE////9tAAAAAAAAAAAAAADq////tra2tra2trYAAAAA////////////////AAAAAP///////////////wAAAAAAACqn6v/qpyoAAAAAAAAAAEn6///////6RAAAAAAAAAbn///VhdX//+EGAAAAAABT///VBQAF4P//UwAAAAAAof//eAAAAH3//6EAAAAAAND//0kAAABO///QAAAAAADq//8pU5JTNP//5QAAAAAA////JJL/kiT///8AAAAAAP///ySS/5Ik////AAAAAADq//8pKkkqOf//5QAAAAAA0P//SQAAAE7//8sAAAAAAJz//30AAACC//+XAAAAAABJ///gCgAQ4P//QwAAAAAAANX//9uK2///zwAAAAAAAAA07///////7y8AAAAAAAAAACqn6v/lnBoAAAAAAAAAAAAAAG3///8kAAAAAAAAAAAAAGP5////JAAAAAAAAABOecb//////yQAAAAAAAAA/////57///8kAAAAAAAAAP//u0NJ////JAAAAAAAAABDFQAASf///yQAAAAAAAAAAAAAAEn///8kAAAAAAAAAAAAAABJ////JAAAAAAAAAAAAAAASf///yQAAAAAAAAAAAAAAEn///8kAAAAAAAAAAAAAABJ////JAAAAAAAAAAAAAAASf///yQAAAAAAAAAAAAAAEn///8kAAAAAAAAAF5tbW2X////gm1tbQAAAADb//////////////8AAAAA2///////////////AAAAAAAAPazn///hp0MAAAAAAAAAW///////////gAAAAAAAJfr///O2tvP///oxAAAAAJ7//+ofAAAS8P//kgAAAACy1fieAAAAAMn//6oAAAAAAAAAAAAAACv1//9uAAAAAAAAAAAAACvb///lDAAAAAAAAAAAAFj5///5OQAAAAAAAAAAAID////tQAAAAAAAAAAABpz////VKgAAAAAAAAAABcL///+MBgAAAAAAAAAAAJj///9hAAAAAAAAAAAAAE////96AAAAAAAAAAAAAADn////tra2tra2trYAAAAA////////////////AAAAAP///////////////wAAAAAAADGc4P//4KE5AAAAAAAAAG3//////////4AAAAAAACT////tqqrz////NwAAAACC///lEAAAJPX//4IAAAAARG15XgAAAAC7//+SAAAAAAAAAAAAAAAQ8P//UwAAAAAAAAAATm2S5f//ngAAAAAAAAAAALb////GPwAAAAAAAAAAAAC2/////9tHAAAAAAAAAAAANElVnP///1gAAAAAAAAAAAAAAACS///WAAAAAIKXtlMAAAAAbf///wAAAADB///VFQAAEMv//9sAAAAAW/////Owqu3///+AAAAAAACc//////////+8EAAAAAAAAEOn4P//6rFTAAAAAAAAAAAAAABY////2wAAAAAAAAAAAAAV7f///9sAAAAAAAAAAAAFvP/////bAAAAAAAAAAAAc///qv//2wAAAAAAAAAAK/X/u1X//9sAAAAAAAAABtz/+B5V///bAAAAAAAAAJL//1UAVf//2wAAAAAAAFX//40AAFX//9sAAAAAAB7x/9UGAABV///bAAAAAAC7/+8rAAAAVf//2wAAAAAA/////////////////wAAAP////////////////8AAACAgICAgICAsf//7YCAAAAAAAAAAAAAAFX//9sAAAAAAAAAAAAAAABV///bAAAAAAAAAAAAAAAAVf//2wAAAAAAAAD/////////////AAAAAAAS/////////////wAAAAAAJP///21tbW1tbW0AAAAAACn///UAAAAAAAAAAAAAAABJ///bAAAAAAAAAAAAAAAASf//1jGMtrCCHwAAAAAAAGP//+////////VbAAAAAABt/////+Dg/////zkAAAAAgP//7TkAAE75//+qAAAAAAAAAAAAAAAAkv//4AAAAAAAAAAAAAAAAG3///8AAAAAZ4CYQwAAAACA///bAAAAAMb//8YGAAAl5f//oQAAAABe////56y28///+SoAAAAAAJX/////////80cAAAAAAAAATrHn///Vlx8AAAAAAAAAABqS2//6y2MAAAAAAAAAADTv////////jQAAAAAAAADV///nksL///8kAAAAAABO///qHwAAp//gXgAAAAAAp///eAAAABAFAAAAAAAAANb//zQANEkvAAAAAAAAAAD///9D1f///+A+AAAAAAAA////7///////+ioAAAAAAP///+1PAD3t//+kAAAAAAD6//9yAAAAXv//6gAAAAAA0P//SQAAACT///8AAAAAAJz//2gAAAA0///1AAAAAAA+///bEAAAof//wQAAAAAAAMP//9uGvP///1sAAAAAAAAf4P///////7EAAAAAAAAAABWS2//1xmMAAAAAAAAA//////////////8AAAAAAP//////////////AAAAAAC2tra2tra2u///+gAAAAAAAAAAAAAAAJL//3oAAAAAAAAAAAAAAE7//8sFAAAAAAAAAAAAAAzn//83AAAAAAAAAAAAAACS//+YAAAAAAAAAAAAAAAv///lDAAAAAAAAAAAAAAAtv//bQAAAAAAAAAAAAAAH///9RUAAAAAAAAAAAAAAIb//6oAAAAAAAAAAAAAAADb//9eAAAAAAAAAAAAAAAd////HgAAAAAAAAAAAAAAYf//8AAAAAAAAAAAAAAAAID//9UAAAAAAAAAAAAAAACk//+2AAAAAAAAAAAAAAAFY8Hv/+/GYwUAAAAAAAAFsf////////+2BQAAAAAAW////4BFgP///1sAAAAAAKf//6cAAACx//+hAAAAAACs//+SAAAAkv//rAAAAAAAY///xgUABcv//2MAAAAAAAWx///VktX//6wAAAAAAAAAAJf/////+pIFAAAAAAAABrz//+267f//yBIAAAAAAJf//7YFAAW2//+XAAAAAAD1//85AAAAOf//9QAAAAAA////KQAAAC////8AAAAAAPD//20AAABy///wAAAAAACS///5ekpz+f//kgAAAAAAEMv/////////yxAAAAAAAAAFcsbv//XGcgUAAAAAAAAAAGPB7//qrDQAAAAAAAAAALH////////6TgAAAAAAAGH///+8htv//+0MAAAAAADB//+nAAAQ1f//bQAAAAAA+v//OQAAAGP//7sAAAAAAP///ykAAABJ///qAAAAAADq//9oAAAAaP///wAAAAAAnP//6kQKU+////8AAAAAACr5///////z////AAAAAAAATu/////qWP//+gAAAAAAAAAQWG1OCi///9AAAAAAAAAKLxUAAABz//+cAAAAAACN//+NAAAf6v//PgAAAAAASf///7aS5///wwAAAAAAAACs////////4B8AAAAAAAAABXLL+v/bjRUAAAAAAAAAAAAAAAAAAAAAAApezAAAAAAAAAAAAAAJTqru//8AAAAAAAAAACuZ6///////AAAAAAAkd8T////////VdwAACVy4////////95kzAAAAhe7////////WehEAAAAAAP//////5pE5AAAAAAAAAAD///+4VQAAAAAAAAAAAAAA////uE0AAAAAAAAAAAAAAP//////5pE5AAAAAAAAAAB65v///////9ZwEQAAAAAAAAdEmer///////iqVQcAAAAAAAAJXLj////////ujwAAAAAAAAAAK4/r//////8AAAAAAAAAAAAAAE6q7v//AAAAAAAAAAAAAAAAAApezAAAAAAAAABu//9jAAAAAAAAAAAAAAAAu///uwAAAAAAAAAAAAAACvbW0foOAAAAAAAAAAAAAE7/jZb/UgAAAAAAAAAAAACk/0RU/5sAAAAAAAAAAAAF8PEFEv/fAAAAAAAAAAAAQP+6AADL/y8AAAAAAAAAAIT/eAAAgP+AAAAAAAAAAADN/zIAADT/0AAAAAAAAAAa//AFAAAA7f8gAAAAAAAAY//629vb2/b/YAAAAAAAALb/6N/f39/n/6sAAAAAAA76/w8AAAAAJf/xBQAAAABO/80AAAAAAADg/z4AAAAAm/+IAAAAAAAAkv+WAAAAAN//RQAAAAAAAET/5QAAAAAA///////xu1cAAAAAAAAAAP//x7+/z///mwAAAAAAAAD//yAAAAA59v9AAAAAAAAA//8gAAAAAK3/cgAAAAAAAP//IAAAAACr/3QAAAAAAAD//yAAAAAQ7f9AAAAAAAAA//+AbW2J4P+hAAAAAAAAAP////////+fCQAAAAAAAAD//2BJSVux/+AXAAAAAAAA//8gAAAAAJL/lgAAAAAAAP//IAAAAAA3/9oAAAAAAAD//yAAAAAAIP//AAAAAAAA//8gAAAAAEX/6AAAAAAAAP//IAAAABW//6QAAAAAAAD//8e/v8/7/+QkAAAAAAAA///////2y3sKAAAAAAAAAAAABWC/8f/xv3IAAAAAAAAACbv//8u20P//AAAAAAAAAJT/5DQAAAAgmwAAAAAAAB/6/yoAAAAAAAAAAAAAAACJ/7IAAAAAAAAAAAAAAAAAxv9tAAAAAAAAAAAAAAAAAO3/SQAAAAAAAAAAAAAAAAD//ykAAAAAAAAAAAAAAAAA//8pAAAAAAAAAAAAAAAAAPL/SQAAAAAAAAAAAAAAAADL/20AAAAAAAAAAAAAAAAAif+yAAAAAAAAAAAAAAAAACT//yoAAAAAAAAAAAAAAAAAl//fNAAAAByWAAAAAAAAAA7G///LttD//wAAAAAAAAAABWTD8f/xv3IAAAAAAAD/////5LFXAAAAAAAAAAAA///Hv9///8QYAAAAAAAAAP//IAAAL8j/uwAAAAAAAAD//yAAAAAX9f8+AAAAAAAA//8gAAAAAJv/mwAAAAAAAP//IAAAAABe/9YAAAAAAAD//yAAAAAARP//AAAAAAAA//8gAAAAACT//wAAAAAAAP//IAAAAAAk//8AAAAAAAD//yAAAAAARP//AAAAAAAA//8gAAAAAFj/1gAAAAAAAP//IAAAAACb/58AAAAAAAD//yAAAAAX9f8+AAAAAAAA//8gAAAvyP+/AAAAAAAAAP//x7/f///IGAAAAAAAAAD/////5LFXAAAAAAAAAAAA////////////2wAAAAAAAP//0r+/v7+/v6QAAAAAAAD//0kAAAAAAAAAAAAAAAAA//9JAAAAAAAAAAAAAAAAAP//SQAAAAAAAAAAAAAAAAD//0kAAAAAAAAAAAAAAAAA//+XbW1tbW1tLwAAAAAAAP///////////20AAAAAAAD//31JSUlJSUkfAAAAAAAA//9JAAAAAAAAAAAAAAAAAP//SQAAAAAAAAAAAAAAAAD//0kAAAAAAAAAAAAAAAAA//9JAAAAAAAAAAAAAAAAAP//SQAAAAAAAAAAAAAAAAD//9K/v7+/v7+/AAAAAAAA/////////////wAAAAAAAP///////////wAAAAAAAAD//8e/v7+/v78AAAAAAAAA//8gAAAAAAAAAAAAAAAAAP//IAAAAAAAAAAAAAAAAAD//yAAAAAAAAAAAAAAAAAA//8gAAAAAAAAAAAAAAAAAP//gG1tbW1tKQAAAAAAAAD//////////2AAAAAAAAAA//9gSUlJSUkbAAAAAAAAAP//IAAAAAAAAAAAAAAAAAD//yAAAAAAAAAAAAAAAAAA//8gAAAAAAAAAAAAAAAAAP//IAAAAAAAAAAAAAAAAAD//yAAAAAAAAAAAAAAAAAA//8gAAAAAAAAAAAAAAAAAP//IAAAAAAAAAAAAAAAAAAAAAl0z/v70owUAAAAAAAAAA7L//bEv+//gAAAAAAAAACz/8MYAAAFZHQAAAAAAAA3//USAAAAAAAAAAAAAAAAjP+NAAAAAAAAAAAAAAAAAM3/TgAAAAAAAAAAAAAAAADr/yQAAAAAAAAAAAAAAAAA//8XAAAIQEBAQAAAAAAAAP//GgAAIP////8AAAAAAADr/yQAABCAgO//AAAAAAAAzf9JAAAAAADf/wAAAAAAAJD/jQAAAAAA3/8AAAAAAAA3/+oOAAAAAN//AAAAAAAAALP/rxAAABLn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AAAAAAAAAAAOkN//9sNSAAAAAAAAAAAO2//glqf2/3IAAAAAAAAAgP+7BQAAMPb3GwAAAAAAANH/RQAAAACS/3gAAAAAAAD7/yAAAAAAUv+7AAAAAAAA//8XAAAAAEn/6gAAAAAAAO//KAAAAABk//8AAAAAAACz/3AAAAAEyf//AAAAAAAARf/xUwUVlvrx/wAAAAAAAAB29/////NX6/8AAAAAAAAAACBtkn0bD//WAAAAAAAAAAAAAAAAAE3/nwAAAAAAAAAAAAAAAADG/0kAAAAAAAAAZAgAAAmU/8cAAAAAAAAAAP/xu7/1/+olAAAAAAAAAACEz/v/1pAXAAAAAAAAAAAAAAAAAAAAAAAAClzCAAAAAAAAAAAAAAArmev//wAAAAAAAAAAGm/E/////+YAAAAAAApSuP/////1mT0AAAAAIo/r/////8xmCgAAAABHrf/////rjzMAAAAAAADg/////61SAAAAAAAAAAAA////wCIAAAAAAAAAAAAAAOv////1rUcAAAAAAAAAAAAAR63/////64UpAAAAAAAAAAAAIo/r/////8xmCgAAAAAAAAAACly4//////WZPQAAAAAAAAAAABpvxP/////mAAAAAAAAAAAAAAArmfX//wAAAAAAAAAAAAAAAAAKXMIAAAAAAAAAAAAAAAAAAAAAAABy///////xDgAAAAAAAAAABysrK6qO1VwAAAAAAAAAAAAAAAfqJHnAAAAAAAAAAAAAAABOwAAW+CQAAAAAAAAAAAAAsVwAAKqAAAAAAAAAAAAAGuoOAABO4wAAAAAAAAAAAJGjAAAAAONHAAAAAAAAAA7uQAAAAACAowAAAAAAAABc5isrKysrTvgRAAAAAAAAwP//////////dwAAAAAAJPEJAAAAAAAAZO4HAAAAAICVAAAAAAAAAA7uVQAAAADcMgAAAAAAAAAAiLEAABxc4ysrFQAAAAAVK0T/ORzV/////5wAAAAAwP/////VAAAAAAAAAAAAAAAAAAAAAADx///////////OawAAAAAAIjO7dzMzMzMzd+6qAAAAAAAAqlUAAAAAAAAr6k0AAAAAAKpVAAAAAAAAAI6zAAAAAACqVQAAAAAAAACAwgAAAAAAqlUAAAAAAAAH1WYAAAAAAKpVAAAAAAArxKoAAAAAAACq49XV1dXm/9UOAAAA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AAAAAAAAAAAAAAAAACaj/60zAAAAAAAAAAAAAAAAAD3C/60pAAAAAAAAAAAAAAAAAE3C/5kaAAAAAAAAAAAAAAAAAHPy/4AAAAAAAAAAAAAAAAAAH5nrAAAAx////////6MAAAAAAAAAHf/////////4FgAAAAAAAABvzMzu/////28AAAAAAAAAAAAA4//4///VAAAAAAAAAAAAVf//nMf//zkAAAAAAAAAALn//ytc//+jAAAAAAAAACT//8cAB+r/+BYAAAAAAACH//9cAACH//95AAAAAAAA5v/uCQAAK///3QAAAAAAR/////////////85AAAAALH/////////////owAAAB3//+Oqqqqqqqrx//gWAACA//9kAAAAAAAAjv//eQBv7v//1bMaAAAzu93//+6I+P//////eQAAo////////6r/////6jkAAFz4/////8Cj///////////4v1UAAAAA+P//////////////sQcAAF7M9//3zMzMzOb///9vAAAAANX/1QAAAAAATvj/xwAAAADV/9UAAAAAAADV/9UAAAAA1f/VAAAAAAAy+P/AAAAAANX/6oCAgIC4///4OQAAAADV////////////lQAAAAAA1f////////////+iAAAAANX/41VVVVVjnPj//3IAAADV/9UAAAAAAAAr8f/qAAAA1f/VAAAAAAAAAKr//wAAANX/1QAAAAAAAB3c//EAXsz3//fMzMzMzNX///+iAPj////////////////VFQCc/////////////86ADgAAAAAAAA55xvn/46NOXKMrAAAAAEDj////////////lQAAADn4///4vKrO/////6oAAAfj//+jDgAAACvH//+qAABk//+qAAAAAAAAHf//qgAAuP//HQAAAAAAAADH/2QAAOP/zgAAAAAAAAAAByQAAAD//6oAAAAAAAAAAAAAAAAA//+qAAAAAAAAAAAAAAAAAPj/wAAAAAAAAAAAAAAAAADH//EHAAAAAAAAAAAAAAAAgP//gAAAAAAAAAAHcTkAAA7q//+cHQAAAAArzv/xAAAAR/j////Iqqrc////zgAAAAA54///////////xxUAAAAAAAdjuOf//9yqTgAAAKP/////////+MyADgAAAAD4/////////////+pAAAAAZtb//+bMzMzm////9ykAAAAz//+AAAAAADO////dBwAAM///gAAAAAAAB8f//2QAADP//4AAAAAAAAAy///AAAAz//+AAAAAAAAAAOr/8QAAM///gAAAAAAAAADV//8AADP//4AAAAAAAAAA1f//AAAz//+AAAAAAAAAANz//wAAM///gAAAAAAAABb//9wAADP//4AAAAAAAACH//+VAAAz//+AAAAAABGH////KwBe1v//5szMzN3/////cAAA+P/////////////4eQAAAJz/////////+MyOKwAAAACj/////////////////1UA+P////////////////9VAF7M7v//zMzMzMzM5v//VQAAAKr//wAAAAAAAID//1UAAACq//8AAABOIgBc//9VAAAAqv//AABk//cWHePdHQAAAKr//4CAwP//KwAAAAAAAACq/////////ysAAAAAAAAAqv////////8rAAAAAAAAAKr//1VVqv//KwAAAAAAAACq//8AAGT/9x0Acv+cAAAAqv//AAAARysAANX//wAAAKr//wAAAAAAAADV//8AXszu///MzMzMzMzM9///APj//////////////////wCc//////////////////8Ao///////////////////APj//////////////////wBezO7//8zMzMzMzMz3//8AAACq//8AAAAAAAAA1f//AAAAqv//AAAHcU0AANX//wAAAKr//wAAcv//JABy/5wAAACq//+AgMD//ysAAAAAAAAAqv////////8rAAAAAAAAAKr/////////KwAAAAAAAACq//9VVar//ysAAAAAAAAAqv//AABO/+YOAAAAAAAAAKr//wAAABwRAAAAAAAAAACq//8AAAAAAAAAAAAAAF7M7v//zMzMux8AAAAAAAD4//////////+qAAAAAAAAnP/////////xTQAAAAAAAAAAAAdjv+r/+M6HY/iAAAAAACvc////////////1QAAACv4///4v6qx6v///9UAAAfc//+jDgAAAABc///VAABk//+jAAAAAAAAAMD/xwAAuP/4DgAAAAAAAAAyqkAAAOP/zgAAAAAAAAAAAAAAAAD//6oAAAAAAAAAAAAAAAAA//+qAAAADqrV1dXV1dVqAPj/uAAAADn/////////8QDV/+oAAAAHo9XV1fj/+GoAlf//XAAAAAAAAADV/9UAACv4//hrBwAAAAAV4//VAAAAef////G/qqrV////1QAAAAB5+P//////////8XIAAAAAAB15v+r//+O4Yw4AAABA6v////FcAGv4////4ysAef//////owCq//////9yABq7///muzMAM7vu//+qGgAAK///gAAAAAAAqv//AAAAACv//4AAAAAAAKr//wAAAAAr//+AAAAAAACq//8AAAAAK///qlVVVVVVxv//AAAAACv//////////////wAAAAAr//////////////8AAAAAK///wICAgICA1f//AAAAACv//4AAAAAAAKr//wAAAAAr//+AAAAAAACq//8AAAAAK///gAAAAAAAqv//AAAAd9X//+a7MwAzu+7//8xeAP///////6MAqv//////+ACq//////FcAGPx/////5wAAACc/////////////5wAAAAA8f/////////////xAAAAAFXMzMzd///dzMzMVQAAAAAAAAAAVf//VQAAAAAAAAAAAAAAAFX//1UAAAAAAAAAAAAAAABV//9VAAAAAAAAAAAAAAAAVf//VQAAAAAAAAAAAAAAAFX//1UAAAAAAAAAAAAAAABV//9VAAAAAAAAAAAAAAAAVf//VQAAAAAAAAAAAAAAAFX//1UAAAAAAAAAAAAAAABV//9VAAAAAAAAAAAAAAAAVf//VQAAAAAAAAAAZszMzN3//93MzMxmAAAAAPH/////////////8QAAAACO/////////////44AAAAAAACc////////////qgAAAAAA8f////////////8AAAAAAE6qqqqq8f/xqqpVAAAAAAAAAAAAANX/1QAAAAAAAAAAAAAAAADV/9UAAAAAAAAAAAAAAAAA1f/VAAAAAAAAAAAAAAAAANX/1QAAAAAAAAAAAAAAAADV/9UAAAAAkfdNAAAAAAAA1f/VAAAAAPj/owAAAAAAANX/1QAAAAD//6oAAAAAAADV/9UAAAAA//+qAAAAAAAH8f/AAAAAAP//zisAAAAJnP//gAAAAAD/////3Kq49///6hUAAAAAgOr/////////6isAAAAAAAAHVaPj//jMgA4AAAAAAACq///////xVQC5/////8cO/////////6Md////////K2bM9///zLsrAKL////mkQAAANX//wAAAEfq//+qFQAAAADV//8AAGP4//95AAAAAAAA1f//AIf///hcAAAAAAAAANX//6r///FAAAAAAAAAAADV////////lQcAAAAAAAAA1f////////+RAAAAAAAAANX//84def///0cAAAAAAADV//8HAAB5///jCQAAAAAA1f//AAAAAMf//5kAAAAAANX//wAAAABA////HQAAZsz3///MuysAAMz//93MZv////////+jAABk//////iq///////xVQAADvj///+jnP/////////xVQAAAAAAAPH//////////7sAAAAAAABVzMzm///dzLspAAAAAAAAAAAAgP//VQAAAAAAAAAAAAAAAID//1UAAAAAAAAAAAAAAACA//9VAAAAAAAAAAAAAAAAgP//VQAAAAAAAAAAAAAAAID//1UAAAAAAAAAAAAAAACA//9VAAAAAAAAAAAAAAAAgP//VQAAAAAAY/+4AAAAAID//1UAAAAAAMf//wAAAACA//9VAAAAAADV//8AAAAAgP//VQAAAAAA1f//AGbMzOb//93MzMzMzPf//wDx//////////////////8Ajv//////////////////AKr///+jAAAAAAAAjv///8f4////+B0AAAAADvH////4b/f///+IAAAAAG//////bwDV////6gcAAADV/////wAA1f////9rAABO//////8AANX/8f//4wAAwP//4///AADV/9Wq//9VMv//zqr//wAA1f/VK///1ar//1Wq//8AANX/1QDM/////+4Jqv//AADV/9UAVf////+HAKr//wAA1f/VAADV////HQCq//8AANX/1QAAa///qgAAqv//AADV/9UAAAcrKw4AAKr//wCI9//3zKoaAAAJqszu//+A////////cgAATv//////+LH/////8TkAACTj/////8ej////4w4AAACq//////+O8f////+cAAAA////////8U3E/////zwAAGbM3f//3V4AAP/////OBwAAAFX//1UAAAD//////3kAAABV//9VAAAA///V+P/4KwAAVf//VQAAAP//qoD//90OAFX//1UAAAD//6oH3P//nABV//9VAAAA//+qAET///88Vf//VQAAAP//qgAAqv//zlz//1UAAAD//6oAABXm///O//9VAAAA//+qAAAAPPj/////VQAAAP//qgAAAACA/////1UAM7v//+7MogkACd3///9VAKP///////9OAABH////VQBc8f/////VFgAAAKr//1UAAAAAAFWx6v/jo0AAAAAAAAAAFbH/////////sRUAAAAAB9X////Gqsb////VFQAAAJz//9UyAAAAMtX//7kAACv//+MVAAAAAAAV4///OQCV//9VAAAAAAAAAFX//5UAzv/qAAAAAAAAAAAA6v/OAO3/vAAAAAAAAAAAAMP/5wDq/8AAAAAAAAAAAADA/+oAzv/qAAAAAAAAAAAA6v/OAJX//1UAAAAAAAAAVf//lQAr///cFQAAAAAAFdz//ysAAJz//9UrAAAAK9X//5wAAAAO1f///8aqxv///9UHAAAAABW4/////////7EVAAAAAAAAAFWx6v/qsVUAAAAAAACj///////////joysAAAAA+P/////////////4awAAAF7M9//3zMzMzP////8rAAAAANX/1QAAAAAOqv//owAAAADV/9UAAAAAAA74/+MAAAAA1f/VAAAAAAAA4//qAAAAANX/1QAAAAAAOf//xwAAAADV/+NVVVVVjvj//2sAAAAA1f///////////8wAAAAAANX//////////6MVAAAAAADV/+qAgICAThUAAAAAAAAA1f/VAAAAAAAAAAAAAAAAANX/1QAAAAAAAAAAAAAAXsz3//fMzMyiCQAAAAAAAPj//////////1UAAAAAAACc/////////9wkAAAAAAAAAAAAAGPE+vbBVwAAAAAAAAAADrf///////+yDAAAAAAAALH/+oAvMof6/6QAAAAAAFD/90QAAAAAWP//NwAAAACx/5YAAAAAAACs/6cAAAAA3/9JAAAAAAAAU//bAAAAAPv/JAAAAAAAAC3/9gAAAADf/0UAAAAAAABO/9sAAAAAtv+JAAAAAAAAl/+nAAAAAGT/8y4AAAAAPPv/NwAAAAAF0P/vYAoOY/H/pAAAAAAAABvD////////sgwAAAAAAAAABZf///HBVwAAAAAAAAAAABvg/6eSbTdEv4IAAAAAAADD///////////JAAAAAAAAn+WtfW2h8fWfFQAAuf//////////zocdAAAAAP//////////////6kcAAABmzP//7szMzOD////uEQAAAAD//6oAAAAAK9X//2sAAAAA//+qAAAAAAA5//+jAAAAAP//qgAAAAAAVf//nAAAAAD//6oAAAARa+r//1UAAAAA///x1dXc/////6oAAAAAAP///////////6IJAAAAAAD///////////FAAAAAAAAA//+qAAAdzP//8SsAAAAAAP//qgAAAAm4///jFQAAAAD//6oAAAAAB87//6oAAGbM///uzKIJAAAr9///zGb/////////YwAAAID////xqv//////3CQAAAAH4///jgAAAAdvv/H/8b9esfEyAAAAACvV////////////eQAAAAfO////xqrG/////4AAAABH///VKwAAAB3M//+AAAAAgP//ZgAAAAAAM///awAAAGP//7sOAAAAAACjxh0AAAAW8f//8aNcJAAAAAAAAAAAAE/t///////zxXoSAAAAAAAAHYDG+P//////1RUAAAAAAAAAAAAyY7H///+VAAAAXKMrAAAAAAAAM/H/8QAAAPH/owAAAAAAAADV//8AAAD///+ADgAAAA6I///cAAAA//////i/qr/x////cgAAAPH/////////////jgAAAABcnCtvuOr//9WZQAAAAAAA//////////////////8AAP//////////////////AAD//+7MzN3//93MzO7//wAA//+qAABV//9VAACq//8AAP//qgAAVf//VQAAqv//AAD//6MAAFX//1UAAKP//wAAqvhOAABV//9VAABO+LEAAAAAAAAAVf//VQAAAAAAAAAAAAAAAFX//1UAAAAAAAAAAAAAAABV//9VAAAAAAAAAAAAAAAAVf//VQAAAAAAAAAAAAAAAFX//1UAAAAAAAAAAAAAAABV//9VAAAAAAAAAAAAZszM3f//3czMXgAAAAAAAP////////////gAAAAAAACj//////////+cAAAAuf/////4eQBr+P////+5AP///////6oAqv///////wBV1f//qpwrACucqv//1VwAAID//wAAAAAAAAD//4AAAACA//8AAAAAAAAA//+AAAAAgP//AAAAAAAAAP//gAAAAID//wAAAAAAAAD//4AAAACA//8AAAAAAAAA//+AAAAAgP//AAAAAAAAAP//gAAAAID//wAAAAAAAAD//4AAAABy//8HAAAAAAAH//9yAAAAR///VQAAAAAAVf//RwAAAAfx/+o5AAAAOer/8Q4AAAAAXP///86qzv///2sAAAAAAAB6/////////5IAAAAAAAAAAECx6v/qsUAAAAAAAKr/////8UAAADnq/////8f///////+AAAB5///////4gO7//927GgAAGrPV///ubwB5//+AAAAAAAAAXP//eQAADvj/6gcAAAAAAM7/+A4AAACj//9cAAAAADn//5wAAAAAMv//zgAAAACj//8rAAAAAADO//85AAAW+P/AAAAAAAAAZv//ogAAd///XgAAAAAAAA7x//EOANX/8Q4AAAAAAAAAnP//ckf//44AAAAAAAAAACv//9y4//8kAAAAAAAAAAAAx/////+xAAAAAAAAAAAAAF7/////TQAAAAAAAAAAAAAO8f//4wcAAAAAAAAAAAAAAI7//4AAAAAAAACq//////hjAABr+P////+q+P//////xwAAqv//////+G///+7MxDMAADO7zO7//28A8f/OAAAAAAAAAACq/+oAANX/6gAAef//owAAzv/OAACq//8OAM7///EHAOr/qgAAjv//KyT/////Tgf//4cAAHL//1V5/////6Mr//9yAABV//93xP/u7v/uVf//VQAAMv//o///o6P//6v//zIAAA7//////05O//////8WAAAA8f////EHB/H////4AAAAANX///+qAACj////1QAAAACq////ZgAAVf///7MAAAAAlf///xYAAA74//+cAAAAAHn//8AAAAAAsf//gAAAefj////VIgAAOeb////3a87//////1UAAHn//////6pNzP///6IAAAAazP///8IzAACq///VGgAAK+7//4AAAAAAALH//8wVFeP//6MAAAAAAAAHzv//zs7//8cHAAAAAAAAABXj/////9UVAAAAAAAAAAAAK////+MaAAAAAAAAAAAAAHf/////UgAAAAAAAAAAAEf4//////c5AAAAAAAAACvq//+Vh///6iQAAAAAABrV//+qBwCx///VFQAAABXM//+4AAAAB8T//7gJAG/m////xCkAADPM////4G////////+ZAACq////////qv/////qTQAAY+7/////qof/////nAAAALn/////nADx//////EAAAD///////EAVdX///9eAAAAb////9VVAAAAx///cgAAAHn//7kAAAAAAB3x//gyADL4//EdAAAAAAAAZP//zg7V//9cAAAAAAAAAACq///j//+qAAAAAAAAAAAAFer////qFQAAAAAAAAAAAABV////VQAAAAAAAAAAAAAAANz/3AAAAAAAAAAAAAAAAADV/9UAAAAAAAAAAAAAAAAA1f/VAAAAAAAAAAAAAAAAANX/1QAAAAAAAAAAAAmizMz3//fMzKIJAAAAAABV////////////TgAAAAAAHdz/////////3B0AAAAAAID/////////////gAAAAACA/////////////4AAAAAAgP//1czMzMz///93AAAAAID//ysAAACH///OBwAAAACA//8rAABV///qJAAAAAAAVf//HQAr8f//RwAAAAAAAABqTgAO1f//gAAAAAAAAAAAAAAAsf//sQAAAAAAAAAAAAAAb///5hEAAAAAAAAAAAAAK/j//0AAABV5QAAAAAAAFdz//3kAAACA//EAAAAAALj//6oAAAAAqv//AAAAAIf//9UHAAAAAKr//wAAAAD////mzMzMzMzu//8AAAAA////////////////AAAAAP///////////////wAAAAAAACWe6v/qnjEAAAAAAAAAADf4///////4PQAAAAAAAAbb//+hbaH//9UGAAAAAABc//95AAAAef//VQAAAAAAqv/hBgAAAAbh/6oAAAAAANX/qgAAAAAAqv/VAAAAAAD//4AAAAAAAID//wAAAAAA//+AAAAAAACA//8AAAAAAP//gAAAAAAAgP//AAAAAAD//4AAAAAAAID//wAAAAAA1f+qAAAAAACq/9UAAAAAAKr/6gcAAAAH6v+jAAAAAABP//+MAAAAjP//VQAAAAAAAM///7yAvP//1QAAAAAAAAA07f//////5y8AAAAAAAAAAB2O5//njhUAAAAAAAAAAAAAavn/tgAAAAAAAAAAAAAqwv///7YAAAAAAAAAAABV+f//+f+2AAAAAAAAAAAA1f/hSbb/tgAAAAAAAAAAADlzBwC2/7YAAAAAAAAAAAAAAAAAtv+2AAAAAAAAAAAAAAAAALb/tgAAAAAAAAAAAAAAAAC2/7YAAAAAAAAAAAAAAAAAtv+2AAAAAAAAAAAAAAAAALb/tgAAAAAAAAAAAAAAAAC2/7YAAAAAAAAAAAAAAAAAtv+2AAAAAAAAAAAAAAAAALb/tgAAAAAAAAAAADKAgIDb/9uAgIArAAAAAADt////////////5wAAAAAAjv///////////44AAAAAAAAAGI7h//OxQwAAAAAAAAAAPer///////+AAAAAAAAAHvj//7CAmPH//1sAAAAAAIL//08AAAAY2//BAAAAAAB6/7AAAAAAAJL/2wAAAAAABk4SAAAAAAC2/9sAAAAAAAAAAAAAAACA//+XAAAAAAAAAAAAAABb///qGAAAAAAAAAAAAABr///tKwAAAAAAAAAAAACH///tNAAAAAAAAAAAAAax///bJAAAAAAAAAAAACXL///IHwAAAAAAAAAAAD3q//+2BwAAJPG2AAAAAADz///4hoCAgLD//wAAAAAA//////////////8AAAAAAP//////////////AAAAAAAABmPB7//vtjkAAAAAAAAADM7////////5RwAAAAAAAF7//8Z9bYzq//MaAAAAAAAYv5IAAAAAN///YQAAAAAAAAAAAAAAAAX//20AAAAAAAAAAAAAAAB5//8xAAAAAAAAAAAKobbQ//+AAAAAAAAAAAAASf////+YAAAAAAAAAAAAAAp9ntD//7YQAAAAAAAAAAAAAAAASfn/jAAAAAAAAAAAAAAAAACX/+UAAAAAAAAAAAAAAAAAgP/zAAAAAAAqQwAAAAAAJOX/wQAAAAAA8//VkoCAtvn//1sAAAAAAND//////////4AAAAAAAAAMecLz///bnjEAAAAAAAAAAAAAAAAx////kgAAAAAAAAAAAAAAsP///5IAAAAAAAAAAAAAT/////+SAAAAAAAAAAAADuP/6v//kgAAAAAAAAAAAI7//1X//5IAAAAAAAAAADL4/8MA//+SAAAAAAAAAADH//83AP//kgAAAAAAAABe//+SAAD//5IAAAAAAAAH5//jBwAA//+SAAAAAAAAh///cisrK///pAcAAAAAAPj////////////VAAAAAAD/////////////+AAAAAAAgICAgICAgP//yTIAAAAAAAAAAAAlh5L//9BPAAAAAAAAAAAAo////////wAAAAAAAAAAAFzz/////6oAAAAAAACq//////////iAAAAAAAAAqv//////////yQAAAAAAAKr/6oCAgICAeR0AAAAAAACq/9UAAAAAAAAAAAAAAAAAqv/VAAAAAAAAAAAAAAAAAKr/6rjq/+qYHQAAAAAAAACq/////////+1JAAAAAAAAjv//3JWAsf//+CQAAAAAABVzMgAAAABn//+OAAAAAAAAAAAAAAAAAOf/1QAAAAAAAAAAAAAAAACx//8AAAAAAAAAAAAAAAAA4f/VAAAAAHm/KwAAAAAAbf//lQAAAAD///OxgICOzv//+CQAAAAAmP//////////7UkAAAAAAAAymNX///jGgA4AAAAAAAAAAAAAJJLV///VZwAAAAAAAAAAgPj///////8AAAAAAAAFpP//+rB5c6d0AAAAAAAAc///6j0AAAAAAAAAAAAAEu//7SsAAAAAAAAAAAAAAHn//1wAAAAAAAAAAAAAAADD/+ErsPX/zmcAAAAAAAAA+P/c+P//////mAAAAAAAAP/////bfYDn//9JAAAAAAD///+cBwAAHfH/uAAAAAAA4f/hBgAAAACe/+cAAAAAAKr//xYAAAAAnP/jAAAAAABP//+eAAAAJe3/tgAAAAAAAM///9WGlfH//1UAAAAAAAAv7f///////5IAAAAAAAAAAA6H3P/4v1UAAAAAAAAA//////////////8AAAAAAP//////////////AAAAAAD//8CAgICAgNX/+AAAAAAAnPMrAAAAAADq/7EAAAAAAAAAAAAAAABA//9cAAAAAAAAAAAAAAAAnv/1DAAAAAAAAAAAAAAAB/H/sAAAAAAAAAAAAAAAAFz//2cAAAAAAAAAAAAAAACx//8eAAAAAAAAAAAAAAAP+f/JAAAAAAAAAAAAAAAAW///awAAAAAAAAAAAAAAAKT//xYAAAAAAAAAAAAAAADt/8AAAAAAAAAAAAAAAABJ//9hAAAAAAAAAAAAAAAAlf/4DgAAAAAAAAAAAAAAAEDzgAAAAAAAAAAAAAAAQ7Dq/+qwPQAAAAAAAAAAc/////////9tAAAAAAAAMfr/85JtkvP/+jEAAAAAAJX/+CsAAAAr//+VAAAAAACq/9UAAAAAANX/qgAAAAAAh//xFQAAABXx/4cAAAAAABLg/+FtSW3h/+ASAAAAAAAAJNz//////9wkAAAAAAAAAG35///////5bQAAAAAAAEf//85VK0/O//9HAAAAAADD/88GAAAABs//wwAAAAAA//+OAAAAAACH//8AAAAAANX/5yUAAAAl4f/VAAAAAABr///4pICk+P//awAAAAAABqz/////////pwAAAAAAAAAAVbHt/+2xVQAAAAAAAAAABWfI9f/gkh4AAAAAAAAAAJ7////////qKgAAAAAAAEn//+F9bbb//8EAAAAAAACq//EVAAAAsf//OQAAAAAA1f+wAAAAACv//5IAAAAAANX/sQAAAAAO///HAAAAAACe//k9AAAVwv//2wAAAAAAK/n/+JiO5////+oAAAAAAABt///////b2//VAAAAAAAAAEe/+fGYHfj/owAAAAAAAAAAAAAAAIz//1UAAAAAAAAAAAAAAD3//9sAAAAAAAAAAAAAAFXv//9OAAAAAAAAgMiOjtX///9rAAAAAAAAAPn//////+pVAAAAAAAAAABAzv//yIAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAApo/+PAAAAAAAAAAAAACmj/////wAAAAAAAAAAKaP/////9WYAAAAAAAApo//////1jxQAAAAAAD2t//////WPFAAAAAAAPcL//////6MpAAAAAABezP/////3iCIAAAAAAAAAKaP//////6MpAAAAAAAAAAAAKaP//////6MpAAAAAAAAAAAAKaP//////48UAAAAAAAAAAAAKaP/////9Y8UAAAAAAAAAAAAKaP/////9WYAAAAAAAAAAAAAKaP////1AAAAAAAAAAAAAAAAKaP/jwAAAAAAAAAAAAAAAAAAAAA="};
+</script>
+<script>
+cargarPlantillas(PLANTILLAS_JSON);
+
+/* ================= Modo (adelante / reverso) ================= */
+
+var modo = 'delante';
+
+function cambiarModo(m){
+  modo = m;
+  cerrarCamara();
+  document.getElementById('res-foto').innerHTML = '';
+  document.getElementById('miniatura').classList.add('oculto');
+  var bd = document.getElementById('m-delante'), br = document.getElementById('m-reverso');
+  bd.style.background = m === 'delante' ? 'var(--acc)' : 'transparent';
+  bd.style.color = m === 'delante' ? '#0b1020' : 'var(--dim)';
+  br.style.background = m === 'reverso' ? 'var(--acc)' : 'transparent';
+  br.style.color = m === 'reverso' ? '#0b1020' : 'var(--dim)';
+  bd.setAttribute('aria-selected', m === 'delante');
+  br.setAttribute('aria-selected', m === 'reverso');
+  document.getElementById('zona-mrz').style.display = m === 'reverso' ? '' : 'none';
+  document.getElementById('hint-captura').innerHTML = m === 'delante'
+    ? 'Coloca la <strong>parte de adelante</strong> del documento (la de tu foto) dentro del marco, sobre un fondo oscuro. Cuando el encuadre, la luz y la nitidez estén bien, la captura salta sola. Todo ocurre dentro del teléfono.'
+    : 'Enfoca el lado con las líneas de caracteres «&lt;» (la página de datos del pasaporte o el <strong>reverso</strong> del DNI). En cuanto la lectura sea válida, la captura salta sola. Todo ocurre dentro del teléfono.';
+}
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function veredicto(clase, icono, titulo, texto){
+  return '<div class="veredicto v-'+clase+'"><div class="ico">'+icono+'</div>'+
+         '<div><div class="tit">'+esc(titulo)+'</div>'+
+         (texto ? '<div class="txt">'+esc(texto)+'</div>' : '')+'</div></div>';
+}
+
+/* ================= Cámara y escaneo en vivo ================= */
+
+var stream = null, escaneando = false, ocupado = false, linterna = false, exitos = 0;
+
+function ponerEstado(t){
+  var e = document.getElementById('estado');
+  if (e) e.textContent = t;
+}
+
+function abrirCamara(){
+  document.getElementById('res-foto').innerHTML = '';
+  document.getElementById('miniatura').classList.add('oculto');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ camaraNativa(); return; }
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+    audio: false
+  }).then(function(s){
+    stream = s;
+    var v = document.getElementById('video');
+    v.srcObject = s;
+    document.getElementById('visor').classList.remove('oculto');
+    document.getElementById('btn-abrir').classList.add('oculto');
+    document.getElementById('btn-disparar').classList.remove('oculto');
+    document.getElementById('btn-cerrar').classList.remove('oculto');
+    // linterna, si el dispositivo la ofrece
+    try {
+      var caps = s.getVideoTracks()[0].getCapabilities ? s.getVideoTracks()[0].getCapabilities() : {};
+      if (caps.torch) document.getElementById('btn-luz').classList.remove('oculto');
+    } catch(e){}
+    escaneando = true; exitos = 0;
+    setTimeout(cicloEscaneo, 900);
+  }).catch(function(){ camaraNativa(); });
+}
+
+function alternarLinterna(){
+  if (!stream) return;
+  linterna = !linterna;
+  document.getElementById('btn-luz').classList.toggle('encendida', linterna);
+  try { stream.getVideoTracks()[0].applyConstraints({ advanced: [{ torch: linterna }] }); } catch(e){}
+}
+
+function camaraNativa(){
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+  inp.onchange = function(){ archivoElegido(inp); };
+  inp.click();
+}
+
+function cerrarCamara(){
+  escaneando = false;
+  if (stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+  document.getElementById('visor').classList.add('oculto');
+  document.getElementById('btn-abrir').classList.remove('oculto');
+  document.getElementById('btn-disparar').classList.add('oculto');
+  document.getElementById('btn-cerrar').classList.add('oculto');
+  document.getElementById('btn-luz').classList.add('oculto');
+  document.getElementById('zona-mrz').classList.remove('viva');
+  linterna = false;
+  document.getElementById('btn-luz').classList.remove('encendida');
+}
+
+// Un ciclo de escaneo: según el modo, evalúa el anverso o intenta leer la MRZ.
+// Se reprograma solo al terminar (cadencia adaptada a la velocidad del móvil).
+function cicloEscaneo(){
+  if (!escaneando || !stream || ocupado){ if (escaneando) setTimeout(cicloEscaneo, 400); return; }
+  var v = document.getElementById('video');
+  if (!v.videoWidth){ setTimeout(cicloEscaneo, 300); return; }
+  ocupado = true;
+  var c = document.getElementById('lienzo');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  var ctx = c.getContext('2d');
+  ctx.drawImage(v, 0, 0);
+
+  if (modo === 'delante'){
+    try {
+      var frameD = ctx.getImageData(0, 0, c.width, c.height);
+      var luzD = luzRapida(frameD);
+      var enc = detectarDocumento(frameD);
+      var nit = nitidezRapida(frameD);
+      if (luzD === 'oscuro'){ exitos = 0; ponerEstado('Poca luz — acércate a una ventana o enciende la linterna'); }
+      else if (luzD === 'quemado'){ exitos = 0; ponerEstado('Demasiada luz directa — inclina un poco el documento'); }
+      else if (!enc.ok){ exitos = 0; ponerEstado(enc.puntos.length ? enc.puntos[0].titulo : 'Coloca el documento dentro del marco'); }
+      else if (!nit){ exitos = 0; ponerEstado('Mantén el teléfono quieto para que enfoque…'); }
+      else {
+        exitos++;
+        ponerEstado(exitos < 3 ? 'Bien — no te muevas…' : '✓ Capturando');
+        if (exitos >= 3){
+          if (navigator.vibrate) navigator.vibrate(120);
+          escaneando = false;
+          cerrarCamara();
+          procesarDelante(c);
+          ocupado = false;
+          return;
+        }
+      }
+    } catch(e){ ponerEstado('Buscando el documento…'); }
+    ocupado = false;
+    if (escaneando) setTimeout(cicloEscaneo, 350);
+    return;
+  }
+
+  try {
+    // franja inferior, donde el marco pide colocar la MRZ
+    var sy = Math.floor(c.height * 0.5);
+    var franja = ctx.getImageData(0, sy, c.width, c.height - sy);
+
+    // pistas rápidas de luz antes de intentar leer
+    var luz = luzRapida(franja);
+    var r = ocrMrz(franja, digitoControl);
+    if (r.ok && r.formato){
+      var val = validarMrz(r.lineas.join('\n'), new Date());
+      if (val.valido){
+        exitos++;
+        document.getElementById('zona-mrz').classList.add('viva');
+        ponerEstado('✓ Leído — verificando…');
+        // dos lecturas válidas seguidas = captura segura (evita falsos positivos de un fotograma)
+        if (exitos >= 2 || r.confianza > 0.965){
+          if (navigator.vibrate) navigator.vibrate(120);
+          escaneando = false;
+          cerrarCamara();
+          entregarResultado(c, r, val);
+          ocupado = false;
+          return;
+        }
+      } else {
+        exitos = 0;
+        document.getElementById('zona-mrz').classList.remove('viva');
+        ponerEstado('Casi — mantén el documento quieto y recto');
+      }
+    } else {
+      exitos = 0;
+      document.getElementById('zona-mrz').classList.remove('viva');
+      if (luz === 'oscuro') ponerEstado('Poca luz — acércate a una ventana o enciende la linterna');
+      else if (luz === 'quemado') ponerEstado('Demasiada luz directa — inclina un poco el documento');
+      else ponerEstado('Coloca las líneas «<<<» dentro de la zona del recuadro');
+    }
+  } catch(e){
+    ponerEstado('Buscando…');
+  }
+  ocupado = false;
+  if (escaneando) setTimeout(cicloEscaneo, 350);
+}
+
+// Nitidez instantánea: laplaciano submuestreado normalizado por contraste.
+// Solo distingue "enfocado" de "movido/desenfocado"; el análisis fino va después.
+function nitidezRapida(im){
+  var d = im.data, w = im.width, h = im.height;
+  var paso = Math.max(2, Math.floor(Math.min(w, h) / 240));
+  var suma = 0, suma2 = 0, n = 0, min = 255, max = 0;
+  for (var y = paso * 2; y < h - paso * 2; y += paso * 2){
+    for (var x = paso * 2; x < w - paso * 2; x += paso * 2){
+      var i = (y * w + x) * 4;
+      var l0 = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+      var iL = (y * w + x - paso) * 4, iR = (y * w + x + paso) * 4;
+      var iU = ((y - paso) * w + x) * 4, iD = ((y + paso) * w + x) * 4;
+      var lap = 4*l0
+        - (0.299*d[iL] + 0.587*d[iL+1] + 0.114*d[iL+2])
+        - (0.299*d[iR] + 0.587*d[iR+1] + 0.114*d[iR+2])
+        - (0.299*d[iU] + 0.587*d[iU+1] + 0.114*d[iU+2])
+        - (0.299*d[iD] + 0.587*d[iD+1] + 0.114*d[iD+2]);
+      suma += lap; suma2 += lap * lap; n++;
+      if (l0 < min) min = l0;
+      if (l0 > max) max = l0;
+    }
+  }
+  var contraste = Math.max(0.1, (max - min) / 255);
+  var v = (suma2 / n - (suma / n) * (suma / n)) / (contraste * contraste);
+  return v > 250;
+}
+
+// Chequeo de luz instantáneo sobre la franja (submuestreado).
+function luzRapida(im){
+  var d = im.data, n = 0, suma = 0, quemados = 0;
+  for (var i = 0; i < d.length; i += 64){
+    var l = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+    suma += l; n++;
+    if (l > 250) quemados++;
+  }
+  var media = suma / n;
+  if (media < 55) return 'oscuro';
+  if (quemados / n > 0.25) return 'quemado';
+  return 'bien';
+}
+
+function disparar(){
+  var v = document.getElementById('video');
+  if (!v.videoWidth) return;
+  var c = document.getElementById('lienzo');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  escaneando = false;
+  cerrarCamara();
+  if (modo === 'delante') procesarDelante(c); else procesarLienzo(c);
+}
+
+/* ================= Anverso: procesado y resultados ================= */
+
+function procesarDelante(c){
+  var mini = document.getElementById('miniatura');
+  mini.src = c.toDataURL('image/jpeg', 0.82);
+  mini.classList.remove('oculto');
+  var caja = document.getElementById('res-foto');
+  caja.innerHTML = '<div class="card procesando"><div class="rueda"></div>Analizando el encuadre y la calidad…</div>';
+  setTimeout(function(){
+    try {
+      var ctx = c.getContext('2d');
+      var completa = ctx.getImageData(0, 0, c.width, c.height);
+      var encuadre = detectarDocumento(completa);
+      // la calidad se mide SOBRE el documento, no sobre el fondo:
+      // un fondo oscuro (recomendado) no debe contar como "foto oscura"
+      var zona = completa;
+      if (encuadre.bbox){
+        var b = encuadre.bbox;
+        if (b.x1 - b.x0 > 60 && b.y1 - b.y0 > 60){
+          zona = ctx.getImageData(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0);
+        }
+      }
+      var calidad = analizarCalidad(zona, 'tarjeta');
+      pintarResultadoDelante(calidad, encuadre);
+    } catch(e){
+      caja.innerHTML = veredicto('avi','!','Error inesperado al procesar', String(e && e.message || e));
+    }
+  }, 60);
+}
+
+function pintarResultadoDelante(calidad, encuadre){
+  var html = '';
+  var iconos = { bien:'✓', aviso:'!', mal:'✕' };
+  var clases = { bien:'ok', aviso:'aviso', mal:'mal' };
+
+  if (encuadre.ok && calidad.apta){
+    html += veredicto('ok','✓','La foto del anverso está lista',
+      'Encuadre completo, buena luz y texto nítido: es el tipo de foto que una verificación acepta.');
+  } else if (encuadre.ok){
+    html += veredicto('avi','!','Encuadre bien, pero mejora la imagen',
+      'El documento está bien colocado, pero hay defectos de calidad que una verificación puede rechazar. Mira el detalle.');
+  } else {
+    html += veredicto('mal','✕','Repite la foto',
+      'Hay problemas de encuadre o de contraste con el fondo. Mira el detalle y vuelve a intentarlo.');
+  }
+
+  html += '<div class="seccion">Encuadre</div>';
+  encuadre.puntos.forEach(function(p){
+    html += '<div class="chk '+clases[p.nivel]+'"><span class="p">'+iconos[p.nivel]+'</span>'+
+            '<span class="n">'+esc(p.titulo)+'<div class="d" style="font-family:inherit">'+esc(p.detalle)+'</div></span></div>';
+  });
+
+  html += '<div class="seccion">Calidad de la imagen</div>';
+  calidad.puntos.forEach(function(p){
+    html += '<div class="chk '+clases[p.nivel]+'"><span class="p">'+iconos[p.nivel]+'</span>'+
+            '<span class="n">'+esc(p.titulo)+'<div class="d" style="font-family:inherit">'+esc(p.detalle)+'</div></span></div>';
+  });
+
+  html += '<div class="seccion">Revisa a ojo antes de enviarla</div>';
+  html += '<div class="chk aviso"><span class="p">👁</span><span class="n">Que ningún dedo tape datos y que la foto, el nombre y las fechas se lean con claridad al hacer zoom.<div class="d" style="font-family:inherit">El anverso no tiene líneas «&lt;&lt;&lt;», así que esa comprobación la haces tú mejor que nadie.</div></span></div>';
+
+  html += '<div class="seccion">Verifica el número del documento (opcional)</div>';
+  html += '<div class="card"><label for="in-dni" style="display:block;font-size:13px;font-weight:600;color:var(--dim);margin-bottom:8px">Escribe el número tal cual aparece delante</label>'+
+          '<input id="in-dni" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="12345678Z · X1234567L" maxlength="14" '+
+          'style="width:100%;background:var(--bg);color:var(--txt);border:1.5px solid var(--line);border-radius:12px;padding:14px;font-size:17px;font-family:ui-monospace,monospace;letter-spacing:.06em">'+
+          '<div id="res-dni"></div>'+
+          '<button class="btn" onclick="verificarDniAnverso()">Verificar la letra de control</button></div>';
+
+  html += '<button class="btn sec" onclick="abrirCamara()">📷 Repetir la captura</button>';
+  html += '<div class="aviso" style="margin-top:12px">Esto verifica que la foto está bien hecha — no que el documento sea auténtico: eso solo puede confirmarlo el organismo emisor.</div>';
+
+  document.getElementById('res-foto').innerHTML = html;
+}
+
+function verificarDniAnverso(){
+  var inp = document.getElementById('in-dni');
+  var caja = document.getElementById('res-dni');
+  if (!inp || !caja) return;
+  var r = validarDniNie(inp.value);
+  if (r.valido){
+    caja.innerHTML = veredicto('ok','✓','La letra es correcta',
+      (r.tipo === 'DNI' ? 'DNI' : 'NIE') + ' ' + r.numero + r.letra + ': el número es matemáticamente coherente.');
+  } else if (r.tipo){
+    caja.innerHTML = veredicto('mal','✕','La letra no coincide',
+      r.motivo + ' Revisa que copiaste bien el número del documento.');
+  } else {
+    caja.innerHTML = veredicto('avi','!','No se reconoce el formato', r.motivo);
+  }
+  caja.style.marginTop = '12px';
+}
+
+function archivoElegido(inp){
+  var f = inp.files && inp.files[0];
+  if (!f) return;
+  var img = new Image();
+  img.onload = function(){
+    var maxL = 2200;
+    var escl = Math.min(1, maxL / Math.max(img.width, img.height));
+    var c = document.getElementById('lienzo');
+    c.width = Math.round(img.width * escl);
+    c.height = Math.round(img.height * escl);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(img.src);
+    if (modo === 'delante') procesarDelante(c); else procesarLienzo(c);
+  };
+  img.onerror = function(){
+    document.getElementById('res-foto').innerHTML =
+      veredicto('avi','!','No se pudo abrir la imagen','Prueba con otra foto (JPG o PNG).');
+  };
+  img.src = URL.createObjectURL(f);
+  inp.value = '';
+}
+
+/* ================= Procesado y resultados ================= */
+
+var ultimaCalidad = null;
+
+function entregarResultado(c, lectura, validacion){
+  var mini = document.getElementById('miniatura');
+  mini.src = c.toDataURL('image/jpeg', 0.82);
+  mini.classList.remove('oculto');
+  var ctx = c.getContext('2d');
+  ultimaCalidad = analizarCalidad(ctx.getImageData(0, 0, c.width, c.height));
+  pintarResultadoFoto(ultimaCalidad, lectura, validacion);
+}
+
+function procesarLienzo(c){
+  var mini = document.getElementById('miniatura');
+  mini.src = c.toDataURL('image/jpeg', 0.82);
+  mini.classList.remove('oculto');
+  var caja = document.getElementById('res-foto');
+  caja.innerHTML = '<div class="card procesando"><div class="rueda"></div>Analizando la imagen y leyendo el documento…</div>';
+
+  setTimeout(function(){
+    try {
+      var ctx = c.getContext('2d');
+      var completa = ctx.getImageData(0, 0, c.width, c.height);
+      ultimaCalidad = analizarCalidad(completa);
+
+      var sy = Math.floor(c.height * 0.45);
+      var lectura = ocrMrz(ctx.getImageData(0, sy, c.width, c.height - sy), digitoControl);
+      var vale = function(r){
+        if (!r.ok || !r.formato) return false;
+        return validarMrz(r.lineas.join('\n'), new Date()).valido;
+      };
+      if (!vale(lectura)){
+        var l2 = ocrMrz(completa, digitoControl);
+        if (vale(l2) || (l2.ok && l2.formato && !(lectura.ok && lectura.formato)) || (l2.ok && !lectura.ok)) lectura = l2;
+      }
+      var validacion = lectura.ok ? validarMrz(lectura.lineas.join('\n'), new Date()) : null;
+      pintarResultadoFoto(ultimaCalidad, lectura, validacion);
+    } catch(e){
+      caja.innerHTML = veredicto('avi','!','Error inesperado al procesar', String(e && e.message || e));
+    }
+  }, 60);
+}
+
+function pintarResultadoFoto(calidad, lectura, validacion){
+  var html = '';
+  var leida = lectura && lectura.ok && lectura.formato;
+  if (leida && !validacion) validacion = validarMrz(lectura.lineas.join('\n'), new Date());
+
+  if (leida && validacion.valido && calidad.apta){
+    html += veredicto('ok','✓','Documento legible y coherente',
+      'La imagen tiene calidad suficiente y todos los dígitos de control del documento cuadran.');
+  } else if (leida && validacion.valido){
+    html += veredicto('avi','!','Los datos cuadran, pero mejora la foto',
+      'La lectura es coherente, pero la imagen tiene defectos que una verificación puede rechazar. Mira el análisis de abajo.');
+  } else if (leida){
+    html += veredicto('avi','!','Documento leído con dudas',
+      'Se ha leído la MRZ pero algún dígito de control no cuadra. Revisa el texto de abajo y corrige los caracteres mal leídos.');
+    if (lectura.angulo && Math.abs(lectura.angulo) > 2){
+      html += veredicto('avi','📐','El documento está torcido ' + Math.abs(Math.round(lectura.angulo)) + '°',
+        'La lectura mejora mucho con el documento recto. Apóyalo en una superficie y encuadra de frente.');
+    }
+  } else {
+    html += veredicto('mal','✕','No se pudo leer el documento', (lectura && lectura.error) ||
+      'Repite la captura con más luz, más cerca y con las líneas de caracteres dentro de la zona azul.');
+  }
+
+  html += '<div class="seccion">Calidad de la imagen</div>';
+  var iconos = { bien:'✓', aviso:'!', mal:'✕' };
+  var clases = { bien:'ok', aviso:'aviso', mal:'mal' };
+  calidad.puntos.forEach(function(p){
+    html += '<div class="chk '+clases[p.nivel]+'"><span class="p">'+iconos[p.nivel]+'</span>'+
+            '<span class="n">'+esc(p.titulo)+'<div class="d" style="font-family:inherit">'+esc(p.detalle)+'</div></span></div>';
+  });
+
+  if (leida && validacion.campos){
+    var buscar = function(k){
+      var f = validacion.campos.find(function(x){ return x.k === k; });
+      return f ? f.v : '—';
+    };
+    var okDe = function(etq){
+      return validacion.comprobaciones.some(function(c){ return c.etiqueta === etq && c.ok; });
+    };
+    html += '<div class="seccion">Datos del documento</div>';
+    html += '<div class="destacados">';
+    html += '<div class="dato ancho"><div class="e">Titular</div><div class="v">'+esc(buscar('Titular'))+'</div>'+
+            '<div class="m">Leído de la zona MRZ — compáralo con el impreso</div></div>';
+    html += '<div class="dato"><div class="e">Fecha de nacimiento</div><div class="v">'+esc(buscar('Fecha de nacimiento'))+'</div>'+
+            '<div class="m'+(okDe('Fecha de nacimiento')?'':' mal')+'">'+(okDe('Fecha de nacimiento')?'✓ dígito de control correcto':'✕ el dígito de control no cuadra')+'</div></div>';
+    html += '<div class="dato"><div class="e">Nº de documento</div><div class="v">'+esc(buscar('Número de documento'))+'</div>'+
+            '<div class="m'+(okDe('Número de documento')?'':' mal')+'">'+(okDe('Número de documento')?'✓ dígito de control correcto':'✕ el dígito de control no cuadra')+'</div></div>';
+    html += '<div class="dato"><div class="e">Caducidad</div><div class="v">'+esc(buscar('Fecha de caducidad'))+'</div>'+
+            (validacion.vigencia ? '<div class="m'+(validacion.vigencia.nivel==='mal'?' mal':'')+'">'+esc(validacion.vigencia.texto)+'</div>' : '')+'</div>';
+    html += '<div class="dato"><div class="e">Nacionalidad</div><div class="v">'+esc(buscar('Nacionalidad'))+'</div></div>';
+    html += '</div>';
+
+    html += '<div class="seccion">Dígitos de control</div>';
+    validacion.comprobaciones.forEach(function(c){
+      html += '<div class="chk '+(c.ok?'ok':'mal')+'"><span class="p">'+(c.ok?'✓':'✕')+'</span>'+
+              '<span class="n">'+esc(c.etiqueta)+
+              '<div class="d">'+esc(c.detalle)+' · impreso '+esc(c.encontrado)+
+              (c.ok ? '' : ' · debería ser '+esc(c.calculado))+'</div></span></div>';
+    });
+    if (validacion.avisos && validacion.avisos.length){
+      validacion.avisos.forEach(function(a){ html += '<div class="aviso">'+esc(a)+'</div>'; });
+    }
+  }
+
+  if (lectura && lectura.ok){
+    html += '<div class="seccion">Texto leído (puedes corregirlo)</div>';
+    html += '<div class="card"><textarea id="mrz-leida" rows="'+(lectura.lineas.length+1)+'">'+esc(lectura.lineas.join('\n'))+'</textarea>'+
+            '<div class="hint">Compara con tu documento. Si el lector confundió algún carácter, corrígelo y vuelve a verificar.</div>'+
+            '<button class="btn" onclick="reverificar()">Verificar el texto corregido</button></div>';
+  }
+
+  html += '<button class="btn sec" onclick="abrirCamara()">📷 Repetir la captura</button>';
+  html += '<div class="aviso" style="margin-top:12px">Un resultado en verde confirma que los datos se leen bien y son coherentes — no que el documento sea auténtico: eso solo puede confirmarlo el organismo emisor.</div>';
+
+  document.getElementById('res-foto').innerHTML = html;
+}
+
+function reverificar(){
+  var t = document.getElementById('mrz-leida');
+  if (!t || !ultimaCalidad) return;
+  var lineas = t.value.toUpperCase().split(/\n+/).map(function(l){ return l.replace(/[^A-Z0-9<]/g,''); }).filter(Boolean);
+  var lectura = { ok: true, formato: null, lineas: lineas, confianza: 1, angulo: 0 };
+  var val = validarMrz(lineas.join('\n'), new Date());
+  lectura.formato = val.formato;
+  pintarResultadoFoto(ultimaCalidad, lectura, val);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>
 </html>
