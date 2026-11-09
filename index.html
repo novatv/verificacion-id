@@ -153,15 +153,13 @@
       <div id="estado">Buscando las líneas «&lt;&lt;&lt;» del DNI…</div>
       <button id="btn-luz" class="oculto" onclick="alternarLinterna()">🔦</button>
     </div>
-    <button class="btn" id="btn-abrir" onclick="abrirCamara()">📷 Abrir la cámara</button>
+    <button class="btn" id="btn-abrir" onclick="abrirCamara()">📷 Hacer la foto</button>
     <button class="btn oculto" id="btn-disparar" onclick="disparar()">⚪ Capturar ahora</button>
     <button class="btn sec oculto" id="btn-cerrar" onclick="cerrarCamara()">Cancelar</button>
     <label class="btn sec" for="in-archivo" style="margin-top:9px">🖼 Usar una foto de la galería</label>
     <input id="in-archivo" type="file" accept="image/*" style="display:none" onchange="archivoElegido(this)">
     <div class="hint" id="hint-captura">
-      Coloca la <strong>parte de adelante</strong> del DNI (la de tu foto) dentro del marco,
-      sobre un fondo oscuro. Cuando el encuadre, la luz y la nitidez estén bien,
-      la captura salta sola. Todo ocurre dentro del teléfono.
+      Haz una foto normal de la <strong>parte de adelante</strong> del DNI (la de tu foto), con buena luz. No hace falta encuadrarla. Todo ocurre dentro del teléfono.
     </div>
   </div>
 
@@ -171,7 +169,7 @@
   <details>
     <summary>Qué comprueba esta app exactamente</summary>
     <div class="body">
-      <p><strong>De la imagen</strong> analiza lo que hace que una verificación la rechace: nitidez, reflejos, luz, inclinación, colores desvirtuados y resolución.</p>
+      <p><strong>De la imagen</strong> analiza lo que hace que una verificación la rechace: nitidez, reflejos, luz, colores desvirtuados y resolución.</p>
       <p><strong>Delante</strong> lee el número del DNI o NIE, comprueba que la letra cuadra, calcula la edad y mira si está caducado. <strong>Detrás</strong> lee las 3 líneas con «&lt;» y recalcula sus dígitos de control. Si cuadran, el nombre, la fecha de nacimiento y el número son coherentes con lo impreso.</p>
       <p><strong>Lo que no puede hacer:</strong> confirmar autenticidad. Eso solo lo puede hacer el organismo emisor o la lectura del chip NFC con las claves oficiales. Verde = «se lee bien y es coherente», no «es auténtico».</p>
     </div>
@@ -183,7 +181,7 @@
       <ul>
         <li><strong>Luz natural de día</strong>, cerca de una ventana. El flash directo crea un reflejo en el centro.</li>
         <li><strong>Fondo oscuro y liso</strong> debajo del DNI.</li>
-        <li><strong>Las cuatro esquinas visibles</strong>, sin dedos tapando datos y el DNI recto.</li>
+        <li><strong>Las cuatro esquinas visibles</strong>, sin dedos tapando datos.</li>
         <li><strong>Cámara trasera</strong>, no la frontal.</li>
       </ul>
     </div>
@@ -1359,8 +1357,8 @@ function cambiarModo(m){
   br.setAttribute('aria-selected', m === 'reverso');
   document.getElementById('zona-mrz').style.display = m === 'reverso' ? '' : 'none';
   document.getElementById('hint-captura').innerHTML = m === 'delante'
-    ? 'Coloca la <strong>parte de adelante</strong> del DNI (la de tu foto) dentro del marco, sobre un fondo oscuro. Cuando el encuadre, la luz y la nitidez estén bien, la captura salta sola. Todo ocurre dentro del teléfono.'
-    : 'Enfoca la <strong>parte de atrás</strong> del DNI, la de las 3 líneas con caracteres «&lt;». En cuanto la lectura sea válida, la captura salta sola. Todo ocurre dentro del teléfono.';
+    ? 'Haz una foto normal de la <strong>parte de adelante</strong> del DNI (la de tu foto), con buena luz. No hace falta encuadrarla. Todo ocurre dentro del teléfono.'
+    : 'Haz una foto normal de la <strong>parte de atrás</strong> del DNI, que se vean las 3 líneas con «&lt;». No hace falta encuadrarla. Todo ocurre dentro del teléfono.';
 }
 
 function esc(s){
@@ -1384,6 +1382,8 @@ function ponerEstado(t){
 function abrirCamara(){
   document.getElementById('res-foto').innerHTML = '';
   document.getElementById('miniatura').classList.add('oculto');
+  // solo la toma de foto con la cámara del teléfono: sin marco ni captura automática
+  camaraNativa(); return;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ camaraNativa(); return; }
   navigator.mediaDevices.getUserMedia({
     video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
@@ -1574,7 +1574,7 @@ function procesarDelante(c){
   mini.src = c.toDataURL('image/jpeg', 0.82);
   mini.classList.remove('oculto');
   var caja = document.getElementById('res-foto');
-  caja.innerHTML = '<div class="card procesando"><div class="rueda"></div>Analizando el encuadre y la calidad…</div>';
+  caja.innerHTML = '<div class="card procesando"><div class="rueda"></div>Analizando la foto…</div>';
   setTimeout(function(){
     try {
       var ctx = c.getContext('2d');
@@ -1603,22 +1603,13 @@ function pintarResultadoDelante(calidad, encuadre){
   var iconos = { bien:'✓', aviso:'!', mal:'✕' };
   var clases = { bien:'ok', aviso:'aviso', mal:'mal' };
 
-  if (encuadre.ok && calidad.apta){
-    html += veredicto('ok','✓','La foto del anverso está lista',
-      'Encuadre completo, buena luz y texto nítido: es el tipo de foto que una verificación acepta.');
-  } else if (encuadre.ok){
-    html += veredicto('avi','!','Encuadre bien, pero mejora la imagen',
-      'El documento está bien colocado, pero hay defectos de calidad que una verificación puede rechazar. Mira el detalle.');
+  if (calidad.apta){
+    html += veredicto('ok','✓','Foto lista',
+      'Buena luz y texto nítido.');
   } else {
-    html += veredicto('mal','✕','Repite la foto',
-      'Hay problemas de encuadre o de contraste con el fondo. Mira el detalle y vuelve a intentarlo.');
+    html += veredicto('avi','!','La foto se puede mejorar',
+      'Hay algún defecto de luz o nitidez. Mira el detalle.');
   }
-
-  html += '<div class="seccion">Encuadre</div>';
-  encuadre.puntos.forEach(function(p){
-    html += '<div class="chk '+clases[p.nivel]+'"><span class="p">'+iconos[p.nivel]+'</span>'+
-            '<span class="n">'+esc(p.titulo)+'<div class="d" style="font-family:inherit">'+esc(p.detalle)+'</div></span></div>';
-  });
 
   html += '<div class="seccion">Calidad de la imagen</div>';
   calidad.puntos.forEach(function(p){
@@ -1636,7 +1627,7 @@ function pintarResultadoDelante(calidad, encuadre){
           '<div id="res-dni"></div>'+
           '<button class="btn" onclick="verificarDniAnverso()">Verificar la letra de control</button></div>';
 
-  html += '<button class="btn sec" onclick="abrirCamara()">📷 Repetir la captura</button>';
+  html += '<button class="btn sec" onclick="abrirCamara()">📷 Repetir la foto</button>';
   html += '<div class="aviso" style="margin-top:12px">Esto verifica que la foto está bien hecha — no que el documento sea auténtico: eso solo puede confirmarlo el organismo emisor.</div>';
 
   document.getElementById('res-foto').innerHTML = html;
@@ -1908,7 +1899,7 @@ function pintarResultadoFoto(calidad, lectura, validacion){
             '<button class="btn" onclick="reverificar()">Verificar el texto corregido</button></div>';
   }
 
-  html += '<button class="btn sec" onclick="abrirCamara()">📷 Repetir la captura</button>';
+  html += '<button class="btn sec" onclick="abrirCamara()">📷 Repetir la foto</button>';
   html += '<div class="aviso" style="margin-top:12px">Un resultado en verde confirma que los datos se leen bien y son coherentes — no que el documento sea auténtico: eso solo puede confirmarlo el organismo emisor.</div>';
 
   document.getElementById('res-foto').innerHTML = html;
