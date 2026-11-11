@@ -1,5 +1,5 @@
 // Guarda la app en el móvil para que funcione sin conexión
-const CACHE = 'verificador-v12';
+const CACHE = 'verificador-v13';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))));
 self.addEventListener('activate', e => e.waitUntil(
