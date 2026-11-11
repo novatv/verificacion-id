@@ -602,6 +602,11 @@ function validarMrz(texto, hoy) {
   }
 
   res.vigencia = estadoVigencia;
+  res.nacimiento = fNac.fecha || null;
+  res.caducidad = fCad.fecha || null;
+  res.edad = edad;
+  res.numero = numDoc.replace(/</g, '');
+  res.opcionales = (opcional || '').replace(/</g, ' ').split(/\s+/).filter(Boolean);
   res.valido = res.comprobaciones.every(c => c.ok) && fNac.ok && fCad.ok;
   return res;
 }
@@ -730,6 +735,29 @@ function estimarInclinacion(M, w, h) {
 }
 
 // Rota una imagen RGBA alrededor de su centro (bilineal, fondo blanco).
+// Gira un ImageData 90, 180 o 270 grados (para fotos hechas de lado o del revés)
+function girarImagen(im, grados) {
+  const w = im.width, h = im.height, d = im.data;
+  const lado = grados % 180 !== 0;
+  const W = lado ? h : w, H = lado ? w : h;
+  const out = new Uint8ClampedArray(W * H * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let X, Y;
+      if (grados === 90) { X = h - 1 - y; Y = x; }
+      else if (grados === 180) { X = w - 1 - x; Y = h - 1 - y; }
+      else { X = y; Y = w - 1 - x; }
+      const i = (y * w + x) * 4, o = (Y * W + X) * 4;
+      out[o] = d[i]; out[o + 1] = d[i + 1]; out[o + 2] = d[i + 2]; out[o + 3] = 255;
+    }
+  }
+  return new ImageData(out, W, H);
+}
+
+function recortarFilas(im, y0) {
+  return new ImageData(im.data.slice(y0 * im.width * 4), im.width, im.height - y0);
+}
+
 function rotarImagen(im, grados) {
   const rad = -grados * Math.PI / 180;
   const cos = Math.cos(rad), sin = Math.sin(rad);
@@ -1776,6 +1804,7 @@ function pintarResultadoDelante(calidad, encuadre){
 
 // --- Lectura automática del anverso (número, letra y fechas) con Tesseract, todo en el teléfono ---
 var ocrWorker = null;
+var colaOcr = Promise.resolve();
 function cargarTesseract(){
   if (window.Tesseract) return Promise.resolve();
   return new Promise(function(ok, ko){
@@ -1812,6 +1841,9 @@ function buscarDatosAnverso(texto){
   // Errores típicos del OCR en los dígitos
   var tn = t.replace(/(\d)[O](?=\d)/g, '$10').replace(/(\d)[IL](?=\d)/g, '$11');
   var doc = null, m;
+  var pais = paisElegido();
+  if (pais === 'auto') pais = paisPorTexto(t) || 'auto';
+  var buscarEsp = pais === 'ESP' || pais === 'auto';
   // El OCR a veces confunde la letra final con un número (Z→7/2, S→5, B→8, G→6...)
   var parecidas = { '7':'ZT', '2':'Z', '5':'S', '8':'B', '6':'G', '0':'DQ', '1':'LT', '4':'AW', '3':'B', '9':'PG' };
   var LETRAS = 'TRWAGMYFPDXBNJZSQVHLCKE';
@@ -1825,12 +1857,12 @@ function buscarDatosAnverso(texto){
   // el OCR a veces mete un espacio dentro del número (78 703150W): se prueba también
   // sin esos espacios, pero sin juntar fechas (10 12 2001 no es un número de DNI)
   var tnD = tn + '\n' + tn.replace(/\b\d{2}[ \t]\d{2}[ \t]\d{4}\b/g, ' ').replace(/(\d) (?=\d)/g, '$1');
-  while ((m = reD.exec(tnD))){
+  while (buscarEsp && (m = reD.exec(tnD))){
     var r = validarDniNie(m[1] + letraDe(m[1], m[2]));
     if (!doc || r.valido) doc = r;
     if (r.valido) break;
   }
-  if (!doc || !doc.valido){
+  if (buscarEsp && (!doc || !doc.valido)){
     var aCifra = { O:'0', D:'0', Q:'0', I:'1', L:'1', T:'1', Z:'2', S:'5', B:'8', G:'6' };
     var reDs = /(?:^|[^A-Z0-9])([0-9ODQILTZSBG]{8})[ \t]?-?[ \t]?([A-Z0-9])(?![A-Z0-9])/g;
     while ((m = reDs.exec(t))){
@@ -1840,7 +1872,7 @@ function buscarDatosAnverso(texto){
       if (rs.valido){ doc = rs; break; }
     }
   }
-  if (!doc || !doc.valido){
+  if (buscarEsp && (!doc || !doc.valido)){
     var reN = /([XYZ])[ \t]?(\d{7})[ \t]?-?[ \t]?([A-Z0-9])(?![A-Z0-9])/g;
     while ((m = reN.exec(tn))){
       var rn = validarDniNie(m[1] + m[2] + letraDe({X:'0',Y:'1',Z:'2'}[m[1]] + m[2], m[3]));
@@ -1849,8 +1881,6 @@ function buscarDatosAnverso(texto){
     }
   }
   if (doc) doc = Object.assign(validarEuropeo(doc.entrada, 'ESP'), { motivo: doc.motivo });
-  var pais = paisElegido();
-  if (pais === 'auto') pais = paisPorTexto(t) || 'auto';
   if (pais !== 'ESP' && (!doc || !doc.valido)){
     // candidatos: palabras y grupos de cifras (juntando espacios, puntos o guiones)
     // muchos números van en trozos (Portugal: 27932766 9 ZY9): se prueban también 2-4 trozos seguidos
@@ -1908,9 +1938,9 @@ function buscarDatosAnverso(texto){
   // En todos los modelos de DNI cada fecha va bajo su etiqueta; si hay varias
   // etiquetas en una línea, las fechas de las líneas siguientes van en el mismo orden.
   var ETQ = [
-    ['nac', /NACIMIENTO|NAIXEMENT|JAIOTZE|NACEMENTO|NACIM/g],
-    ['emi', /EMISI[OÓ]N?|EMISSI|EXPEDICI|IGORPEN/g],
-    ['val', /VALIDEZ|VALIDESA|V[AÁ]LIDO HASTA|CADUCIDAD|BALIOZ/g]
+    ['nac', /NACIMIENTO|NAIXEMENT|JAIOTZE|NACEMENTO|NACIM|NASCIMENTO|BIRTH|NAISSANCE|NASCITA|GEBURT|GEBOORTE|NAROZENI|URODZENIA|SZÜLET/g],
+    ['emi', /EMISI[OÓ]N?|EMISSI|EXPEDICI|IGORPEN|ISSUE|D[EÉ]LIVR|RILASCIO|AUSSTELL|AFGIFTE|WYDANIA/g],
+    ['val', /VALIDEZ|VALIDESA|V[AÁ]LIDO HASTA|CADUCIDAD|BALIOZ|VALIDADE|EXPIR|SCADENZA|G[UÜ]LTIG|GELDIG|VALABLE|WA[ZŻ]NO/g]
   ];
   var lineas = tn.split('\n');
   function fechasDe(linea){
@@ -1956,7 +1986,7 @@ function leerAnverso(c, bbox){
   var div = document.createElement('div');
   div.id = 'res-ocr';
   div.innerHTML = '<div class="seccion">Datos leídos del documento</div><div class="card procesando"><div class="rueda"></div><span id="ocr-prog">Leyendo el número y las fechas…</span></div>';
-  caja.insertBefore(div, caja.children[1] || null);
+  caja.insertBefore(div, caja.firstChild);  // el resumen, lo primero
   // Primero la foto entera (sin recortar); si el documento sale pequeño, después
   // también el recorte del documento ampliado, para no perder letras ni fechas.
   // Un solo lienzo para todas las pasadas: Safari (iPhone) limita la memoria total de
@@ -1984,7 +2014,8 @@ function leerAnverso(c, bbox){
             x1: Math.min(c.width, Math.round(bbox.x1 + mx)), y1: Math.min(c.height, Math.round(bbox.y1 + my)) };
   }
   var prog = document.getElementById('ocr-prog');
-  obtenerWorker().then(function(wk){
+  // una lectura detrás de otra: si se lanzan dos a la vez se pisan en el mismo lector
+  colaOcr = colaOcr.then(function(){ return obtenerWorker(); }).then(function(wk){
     var textos = '', mejor = null, mejorGiro = 0, mejorConf = -1, n = 0;
     function leer(giro, sinFiltro, r){
       n++;
@@ -2017,7 +2048,12 @@ function leerAnverso(c, bbox){
         .then(function(d2){ return wk.setParameters({ tessedit_char_whitelist: '' }).then(function(){ return d2; }); });
     }).then(function(d){ o.width = o.height = 0; d.texto = textos; return d; });
   }).then(function(d){
-    var html = '<div class="seccion">Datos leídos del documento</div>';
+    ultimoAnverso = d;
+    var html = resumenFinal({
+      numero: d.doc && d.doc.tipo ? { ok: d.doc.valido && !d.doc.soloFormato, aviso: d.doc.valido && d.doc.soloFormato } : null,
+      nac: d.nac, cad: d.cad, permanente: d.permanente
+    }, 'Haz también la foto de la parte de atrás para cruzar los datos.');
+    html += '<div class="seccion">Datos leídos del documento</div>';
     if (d.doc && d.doc.tipo){
       var quien = d.doc.pais.f + ' ' + d.doc.tipo + ' ' + d.doc.entrada;
       html += d.doc.valido
@@ -2085,6 +2121,38 @@ function archivoElegido(inp){
 /* ================= Procesado y resultados ================= */
 
 var ultimaCalidad = null;
+var ultimoAnverso = null;  // lo leído en la parte de adelante, para cruzarlo con la de atrás
+
+function edadDe(nac){
+  var hoy = new Date();
+  var e = hoy.getFullYear() - nac.getFullYear();
+  if (hoy.getMonth() < nac.getMonth() || (hoy.getMonth() === nac.getMonth() && hoy.getDate() < nac.getDate())) e--;
+  return e;
+}
+function mismoDia(a, b){
+  return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+// las fechas de la MRZ vienen en UTC; las del anverso, en hora local
+function fechaLocal(f){ return f ? new Date(f.getUTCFullYear(), f.getUTCMonth(), f.getUTCDate()) : null; }
+
+// Cartel de arriba con lo que importa: mayor de edad, en vigor y numeración correcta
+function resumenFinal(r, pista){
+  var partes = [], malos = [], dudas = [];
+  if (r.numero){ if (r.numero.ok) partes.push('numeración correcta'); else if (r.numero.aviso) dudas.push('numeración: solo se comprueba el formato'); else malos.push('la numeración no cuadra'); }
+  else dudas.push('no se ha leído el número');
+  if (r.nac){ var e = edadDe(r.nac); if (e >= 18) partes.push('mayor de edad (' + e + ')'); else malos.push('MENOR DE EDAD (' + e + ')'); }
+  else dudas.push('no se ha leído la edad');
+  if (r.permanente) partes.push('válido permanente');
+  else if (r.cad){ if (r.cad > new Date()) partes.push('en vigor'); else malos.push('CADUCADO'); }
+  else dudas.push('no se ha leído la caducidad');
+  if (r.cruce === true) partes.push('delante y detrás coinciden');
+  else if (r.cruce === false) malos.push('delante y detrás NO coinciden');
+  var html;
+  if (malos.length) html = veredicto('mal', '✕', 'NO APTO · ' + malos.join(' · '), partes.length ? 'Correcto: ' + partes.join(', ') + '.' : '');
+  else if (dudas.length) html = veredicto('avi', '!', 'REVISAR · ' + dudas.join(' · '), (partes.length ? 'Correcto: ' + partes.join(', ') + '. ' : '') + 'Repite la foto con más luz o compruébalo a mano.');
+  else html = veredicto('ok', '✓', 'APTO · ' + partes.join(' · '), pista || '');
+  return '<div class="seccion">Resumen</div>' + html;
+}
 
 function entregarResultado(c, lectura, validacion){
   var mini = document.getElementById('miniatura');
@@ -2118,6 +2186,16 @@ function procesarLienzo(c){
         var l2 = ocrMrz(completa, digitoControl);
         if (vale(l2) || (l2.ok && l2.formato && !(lectura.ok && lectura.formato)) || (l2.ok && !lectura.ok)) lectura = l2;
       }
+      if (!vale(lectura)){
+        [180, 90, 270].some(function(g){
+          var girada = girarImagen(completa, g);
+          var abajo = Math.floor(girada.height * 0.45);
+          var lg = ocrMrz(recortarFilas(girada, abajo), digitoControl);
+          if (!vale(lg)) lg = ocrMrz(girada, digitoControl);
+          if (vale(lg) || (lg.ok && lg.formato && !(lectura.ok && lectura.formato))) lectura = lg;
+          return vale(lectura);
+        });
+      }
       var validacion = lectura.ok ? validarMrz(lectura.lineas.join('\n'), new Date()) : null;
       pintarResultadoFoto(ultimaCalidad, lectura, validacion);
     } catch(e){
@@ -2147,6 +2225,31 @@ function pintarResultadoFoto(calidad, lectura, validacion){
   } else {
     html += veredicto('mal','✕','No se pudo leer el documento', (lectura && lectura.error) ||
       'Repite la captura con más luz, más cerca y con las líneas de caracteres dentro de la zona azul.');
+  }
+
+  if (leida && validacion && validacion.campos){
+    var cruce = null, detCruce = [];
+    if (ultimoAnverso && (ultimoAnverso.doc || ultimoAnverso.nac)){
+      var numA = ultimoAnverso.doc && ultimoAnverso.doc.entrada ? ultimoAnverso.doc.entrada.replace(/[^A-Z0-9]/g, '') : '';
+      var numsB = [validacion.numero].concat(validacion.opcionales || []);
+      var okNum = numA ? numsB.some(function(n){ return n && (n === numA || numA.indexOf(n) === 0 || n.indexOf(numA) === 0); }) : null;
+      var nacB = fechaLocal(validacion.nacimiento), cadB = fechaLocal(validacion.caducidad);
+      var okNac = ultimoAnverso.nac && nacB ? mismoDia(ultimoAnverso.nac, nacB) : null;
+      var okCad = ultimoAnverso.cad && cadB ? mismoDia(ultimoAnverso.cad, cadB) : null;
+      [['Número del documento', okNum], ['Fecha de nacimiento', okNac], ['Fecha de caducidad', okCad]].forEach(function(x){
+        if (x[1] !== null) detCruce.push(x);
+      });
+      if (detCruce.length) cruce = detCruce.every(function(x){ return x[1]; });
+    }
+    var nacR = fechaLocal(validacion.nacimiento), cadR = fechaLocal(validacion.caducidad);
+    html = resumenFinal({ numero: { ok: validacion.valido }, nac: nacR, cad: cadR, cruce: cruce },
+      cruce === null ? 'Haz también la foto de la parte de adelante para cruzar los datos.' : 'Delante y detrás son el mismo documento.') + html;
+    if (detCruce.length){
+      html += '<div class="seccion">Delante y detrás</div>';
+      detCruce.forEach(function(x){
+        html += '<div class="chk ' + (x[1] ? 'ok' : 'mal') + '"><span class="p">' + (x[1] ? '✓' : '✕') + '</span><span class="n">' + esc(x[0]) + (x[1] ? ' coincide' : ' NO coincide') + '</span></div>';
+      });
+    }
   }
 
   html += '<div class="seccion">Calidad de la imagen</div>';
