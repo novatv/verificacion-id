@@ -1701,21 +1701,24 @@ function leerAnverso(c, bbox){
   div.id = 'res-ocr';
   div.innerHTML = '<div class="seccion">Datos leídos del documento</div><div class="card procesando"><div class="rueda"></div><span id="ocr-prog">Leyendo el número y las fechas…</span></div>';
   caja.insertBefore(div, caja.children[1] || null);
-  // Recorte del documento, a buena resolución y en gris para leer mejor
-  var x0 = 0, y0 = 0, w = c.width, h = c.height;
-  if (bbox && bbox.x1 - bbox.x0 > 60 && bbox.y1 - bbox.y0 > 60){ x0 = bbox.x0; y0 = bbox.y0; w = bbox.x1 - bbox.x0; h = bbox.y1 - bbox.y0; }
-  var k = Math.max(1, 1800 / w);
-  var o = document.createElement('canvas'); o.width = Math.round(w * k); o.height = Math.round(h * k);
-  var ox = o.getContext('2d'); ox.filter = 'grayscale(1) contrast(1.4)';
-  ox.drawImage(c, x0, y0, w, h, 0, 0, o.width, o.height);
+  // Se lee la foto entera (sin recortar), a buena resolución y en gris para leer mejor
+  function preparar(giro){
+    var k = Math.min(2, 2400 / Math.max(c.width, c.height));
+    var w = Math.round(c.width * k), h = Math.round(c.height * k);
+    var o = document.createElement('canvas');
+    o.width = giro ? h : w; o.height = giro ? w : h;
+    var ox = o.getContext('2d'); ox.filter = 'grayscale(1) contrast(1.4)';
+    if (giro){ ox.translate(o.width, 0); ox.rotate(Math.PI / 2); }
+    ox.drawImage(c, 0, 0, w, h);
+    return o;
+  }
   obtenerWorker().then(function(wk){
-    return wk.recognize(o).then(function(r1){
+    return wk.recognize(preparar(false)).then(function(r1){
       var d = buscarDatosAnverso(r1.data.text);
       if (d.doc && d.doc.valido) return d;
-      // segunda pasada con la foto completa por si el recorte cortó el número
-      return wk.recognize(c).then(function(r2){
-        var d2 = buscarDatosAnverso(r1.data.text + '\n' + r2.data.text);
-        return d2;
+      // segunda pasada con la foto entera girada, por si el DNI salió de lado
+      return wk.recognize(preparar(true)).then(function(r2){
+        return buscarDatosAnverso(r1.data.text + '\n' + r2.data.text);
       });
     });
   }).then(function(d){
