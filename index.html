@@ -1677,7 +1677,7 @@ function buscarDatosAnverso(texto){
       if (rn.valido) break;
     }
   }
-  var fechas = [], reF = /(\d{2})[\s.\-\/]{1,2}(\d{2})[\s.\-\/]{1,2}(\d{4})/g;
+  var fechas = [], reF = /(?:^|\D)(\d{2})[\s.\-\/]{0,2}(\d{2})[\s.\-\/]{0,2}(\d{4})(?!\d|\s?-?\s?[A-Z]\b)/g;  // el OCR a veces pega los dígitos (01011990); se excluye el número del DNI (va seguido de letra)
   while ((m = reF.exec(tn))){
     var d = +m[1], me = +m[2], a = +m[3];
     if (d >= 1 && d <= 31 && me >= 1 && me <= 12 && a >= 1900 && a <= 2100){
@@ -1705,22 +1705,30 @@ function leerAnverso(c, bbox){
   function preparar(giro){
     var k = Math.min(2, 2400 / Math.max(c.width, c.height));
     var w = Math.round(c.width * k), h = Math.round(c.height * k);
+    var lado = giro % 180 !== 0;
     var o = document.createElement('canvas');
-    o.width = giro ? h : w; o.height = giro ? w : h;
+    o.width = lado ? h : w; o.height = lado ? w : h;
     var ox = o.getContext('2d'); ox.filter = 'grayscale(1) contrast(1.4)';
-    if (giro){ ox.translate(o.width, 0); ox.rotate(Math.PI / 2); }
-    ox.drawImage(c, 0, 0, w, h);
+    ox.translate(o.width / 2, o.height / 2); ox.rotate(giro * Math.PI / 180);
+    ox.drawImage(c, -w / 2, -h / 2, w, h);
     return o;
   }
+  function completo(d){ return d.doc && d.doc.valido && d.nac && d.cad; }
+  // Prueba la foto derecha y girada (por si el DNI salió de lado o al revés)
+  // y junta lo leído hasta tener número, nacimiento y caducidad
+  var giros = [0, 90, 270, 180], prog = document.getElementById('ocr-prog');
   obtenerWorker().then(function(wk){
-    return wk.recognize(preparar(false)).then(function(r1){
-      var d = buscarDatosAnverso(r1.data.text);
-      if (d.doc && d.doc.valido) return d;
-      // segunda pasada con la foto entera girada, por si el DNI salió de lado
-      return wk.recognize(preparar(true)).then(function(r2){
-        return buscarDatosAnverso(r1.data.text + '\n' + r2.data.text);
+    var textos = '', mejor = null;
+    function paso(i){
+      if (i >= giros.length) return mejor;
+      if (prog && i) prog.textContent = 'Leyendo la foto girada (' + (i + 1) + '/4)…';
+      return wk.recognize(preparar(giros[i])).then(function(r){
+        textos += '\n' + r.data.text;
+        mejor = buscarDatosAnverso(textos);
+        return completo(mejor) ? mejor : paso(i + 1);
       });
-    });
+    }
+    return paso(0);
   }).then(function(d){
     var html = '<div class="seccion">Datos leídos del documento</div>';
     if (d.doc && d.doc.tipo){
