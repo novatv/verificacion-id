@@ -1820,9 +1820,11 @@ function buscarDatosAnverso(texto){
     var esperada = LETRAS[parseInt(num, 10) % 23];
     return (parecidas[c] || '').indexOf(esperada) >= 0 ? esperada : c;
   }
-  var reD = /(?:^|\D)(\d{8})\s?-?\s?([A-Z0-9])(?![A-Z0-9])/g;
-  // el OCR a veces mete un espacio dentro del número (78 703150W): se prueba también sin esos espacios
-  var tnD = tn + '\n' + tn.replace(/(\d) (?=\d)/g, '$1');
+  // número y letra en la misma línea (nunca saltando a la línea siguiente)
+  var reD = /(?:^|\D)(\d{8})[ \t]?-?[ \t]?([A-Z0-9])(?![A-Z0-9])/g;
+  // el OCR a veces mete un espacio dentro del número (78 703150W): se prueba también
+  // sin esos espacios, pero sin juntar fechas (10 12 2001 no es un número de DNI)
+  var tnD = tn + '\n' + tn.replace(/\b\d{2}[ \t]\d{2}[ \t]\d{4}\b/g, ' ').replace(/(\d) (?=\d)/g, '$1');
   while ((m = reD.exec(tnD))){
     var r = validarDniNie(m[1] + letraDe(m[1], m[2]));
     if (!doc || r.valido) doc = r;
@@ -1830,7 +1832,7 @@ function buscarDatosAnverso(texto){
   }
   if (!doc || !doc.valido){
     var aCifra = { O:'0', D:'0', Q:'0', I:'1', L:'1', T:'1', Z:'2', S:'5', B:'8', G:'6' };
-    var reDs = /(?:^|[^A-Z0-9])([0-9ODQILTZSBG]{8})\s?-?\s?([A-Z0-9])(?![A-Z0-9])/g;
+    var reDs = /(?:^|[^A-Z0-9])([0-9ODQILTZSBG]{8})[ \t]?-?[ \t]?([A-Z0-9])(?![A-Z0-9])/g;
     while ((m = reDs.exec(t))){
       if ((m[1].match(/\d/g) || []).length < 6) continue;
       var num = m[1].replace(/[A-Z]/g, function(c){ return aCifra[c]; });
@@ -1839,7 +1841,7 @@ function buscarDatosAnverso(texto){
     }
   }
   if (!doc || !doc.valido){
-    var reN = /([XYZ])\s?(\d{7})\s?-?\s?([A-Z0-9])(?![A-Z0-9])/g;
+    var reN = /([XYZ])[ \t]?(\d{7})[ \t]?-?[ \t]?([A-Z0-9])(?![A-Z0-9])/g;
     while ((m = reN.exec(tn))){
       var rn = validarDniNie(m[1] + m[2] + letraDe({X:'0',Y:'1',Z:'2'}[m[1]] + m[2], m[3]));
       if (!doc || rn.valido) doc = rn;
