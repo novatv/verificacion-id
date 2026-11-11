@@ -1836,8 +1836,10 @@ function buscarDatosAnverso(texto){
     }
     if ((!doc || !doc.valido) && formatoPais) doc = formatoPais;
   }
-  var fechas = [], reF = /(?:^|\D)(\d{2})[\s.\-\/]{0,2}(\d{2})[\s.\-\/]{0,2}(\d{4})(?!\d|\s?-?\s?[A-Z]\b)/g;  // el OCR a veces pega los dígitos (01011990); se excluye el número del DNI (va seguido de letra)
+  var fechas = [], reF = /(?:^|\D)(\d{2})[ \t.\-\/]{0,2}(\d{2})[ \t.\-\/]{0,2}(\d{4})(?!\d)/g;  // el OCR a veces pega los dígitos (01011990)
   while ((m = reF.exec(tn))){
+    // 8 cifras pegadas seguidas de letra en la misma línea = número de DNI, no una fecha
+    if (/^\D?\d{8}$/.test(m[0]) && /^[ \t]?-?[ \t]?[A-Z]\b/.test(tn.slice(reF.lastIndex))) continue;
     var d = +m[1], me = +m[2], a = +m[3];
     if (d >= 1 && d <= 31 && me >= 1 && me <= 12 && a >= 1900 && a <= 2100){
       var f = new Date(a, me - 1, d);
@@ -1846,11 +1848,14 @@ function buscarDatosAnverso(texto){
   }
   fechas.sort(function(a, b){ return a - b; });
   var hoy = new Date(), nac = null, cad = null;
+  // El DNI nuevo trae 3 fechas (nacimiento, expedición y validez). Una fecha de
+  // los últimos 10 años es la de expedición, no la de nacimiento: si el nacimiento
+  // no se lee, mejor no dar edad que dar una edad falsa.
+  var hace10 = new Date(hoy.getFullYear() - 10, hoy.getMonth(), hoy.getDate());
   fechas.forEach(function(f){
-    if (f < hoy && (!nac || f < nac)) nac = f;
-    if (!cad || f > cad) cad = f;
+    if (f < hace10 && (!nac || f < nac)) nac = f;
+    if (f > hoy && (!cad || f > cad)) cad = f;
   });
-  if (cad && nac && +cad === +nac) cad = null;
   return { doc: doc, nac: nac, cad: cad };
 }
 function fechaTxt(f){ return ('0'+f.getDate()).slice(-2) + '/' + ('0'+(f.getMonth()+1)).slice(-2) + '/' + f.getFullYear(); }
@@ -1861,13 +1866,13 @@ function leerAnverso(c, bbox){
   div.innerHTML = '<div class="seccion">Datos leídos del documento</div><div class="card procesando"><div class="rueda"></div><span id="ocr-prog">Leyendo el número y las fechas…</span></div>';
   caja.insertBefore(div, caja.children[1] || null);
   // Se lee la foto entera (sin recortar), a buena resolución y en gris para leer mejor
-  function preparar(giro){
+  function preparar(giro, sinFiltro){
     var k = Math.min(2, 2400 / Math.max(c.width, c.height));
     var w = Math.round(c.width * k), h = Math.round(c.height * k);
     var lado = giro % 180 !== 0;
     var o = document.createElement('canvas');
     o.width = lado ? h : w; o.height = lado ? w : h;
-    var ox = o.getContext('2d'); ox.filter = 'grayscale(1) contrast(1.4)';
+    var ox = o.getContext('2d'); if (!sinFiltro) ox.filter = 'grayscale(1) contrast(1.4)';
     ox.translate(o.width / 2, o.height / 2); ox.rotate(giro * Math.PI / 180);
     ox.drawImage(c, -w / 2, -h / 2, w, h);
     return o;
@@ -1875,13 +1880,13 @@ function leerAnverso(c, bbox){
   function completo(d){ return d.doc && d.doc.valido && d.nac && d.cad; }
   // Prueba la foto derecha y girada (por si el DNI salió de lado o al revés)
   // y junta lo leído hasta tener número, nacimiento y caducidad
-  var giros = [0, 90, 270, 180], prog = document.getElementById('ocr-prog');
+  var giros = [0, 90, 270, 180], pasadas = [[0, true]].concat(giros.map(function(g){ return [g, false]; })), prog = document.getElementById('ocr-prog');
   obtenerWorker().then(function(wk){
     var textos = '', mejor = null;
     function paso(i){
-      if (i >= giros.length) return mejor;
-      if (prog && i) prog.textContent = 'Leyendo la foto girada (' + (i + 1) + '/4)…';
-      return wk.recognize(preparar(giros[i])).then(function(r){
+      if (i >= pasadas.length) return mejor;
+      if (prog && i) prog.textContent = 'Leyendo otra vez la foto (' + (i + 1) + '/' + pasadas.length + ')…';
+      return wk.recognize(preparar(pasadas[i][0], pasadas[i][1])).then(function(r){
         textos += '\n' + r.data.text;
         mejor = buscarDatosAnverso(textos);
         return completo(mejor) ? mejor : paso(i + 1);
