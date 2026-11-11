@@ -335,8 +335,8 @@ const CHK = {
 
 const PAISES_EU = [
   { c:'ESP', n:'España', f:'🇪🇸', t:[ { n:'DNI', re:/^\d{8}[A-Z]$/, k:CHK.dniNie }, { n:'NIE', re:/^[XYZ]\d{7}[A-Z]$/, k:CHK.dniNie } ] },
-  { c:'PRT', n:'Portugal', f:'🇵🇹', t:[ { n:'Cartão de Cidadão', re:/^\d{9}[A-Z0-9]{2}\d$/, k:CHK.ccPortugal } ] },
-  { c:'ITA', n:'Italia', f:'🇮🇹', t:[ { n:'Codice fiscale', re:/^[A-Z]{6}[0-9LMNPQRSTUV]{2}[A-Z][0-9LMNPQRSTUV]{2}[A-Z][0-9LMNPQRSTUV]{3}[A-Z]$/, k:CHK.cfItalia },
+  { c:'PRT', n:'Portugal', f:'🇵🇹', t:[ { n:'Cartão de Cidadão', re:/^\d{9}[A-Z0-9]{2}\d$/, k:CHK.ccPortugal, m:'DDDDDDDDDLLD' } ] },
+  { c:'ITA', n:'Italia', f:'🇮🇹', t:[ { n:'Codice fiscale', m:'LLLLLLDDLDDLDDDL', re:/^[A-Z]{6}[0-9LMNPQRSTUV]{2}[A-Z][0-9LMNPQRSTUV]{2}[A-Z][0-9LMNPQRSTUV]{3}[A-Z]$/, k:CHK.cfItalia },
                                        { n:'Nº de CIE', re:/^C[A-Z]\d{5}[A-Z]{2}$/ } ] },
   { c:'FRA', n:'Francia', f:'🇫🇷', t:[ { n:'Nº de CNI (desde 2021)', re:/^(?=.*\d)[0-9A-Z]{9}$/ }, { n:'Nº de CNI antigua', re:/^\d{12}$/ } ] },
   { c:'D',   n:'Alemania', f:'🇩🇪', t:[ { n:'Nº de Personalausweis', re:/^[CFGHJKLMNPRTVWXYZ][CFGHJKLMNPRTVWXYZ0-9]{8}$/ } ] },
@@ -346,7 +346,7 @@ const PAISES_EU = [
   { c:'IRL', n:'Irlanda', f:'🇮🇪', t:[ { n:'PPS', re:/^\d{7}[A-W][A-IW]?$/, k:CHK.ppsIrlanda } ] },
   { c:'AUT', n:'Austria', f:'🇦🇹', t:[ { n:'Nº de Personalausweis', re:/^\d{8}$/ } ] },
   { c:'CHE', n:'Suiza', f:'🇨🇭', t:[ { n:'Nº de ID', re:/^[A-Z]\d{7}$/ } ] },
-  { c:'POL', n:'Polonia', f:'🇵🇱', t:[ { n:'Nº de dowód osobisty', re:/^[A-Z]{3}\d{6}$/, k:CHK.dowodPolonia }, { n:'PESEL', re:/^\d{11}$/, k:CHK.pesel } ] },
+  { c:'POL', n:'Polonia', f:'🇵🇱', t:[ { n:'Nº de dowód osobisty', re:/^[A-Z]{3}\d{6}$/, k:CHK.dowodPolonia, m:'LLLDDDDDD' }, { n:'PESEL', re:/^\d{11}$/, k:CHK.pesel } ] },
   { c:'ROU', n:'Rumanía', f:'🇷🇴', t:[ { n:'CNP', re:/^[1-9]\d{12}$/, k:CHK.cnpRumania } ] },
   { c:'BGR', n:'Bulgaria', f:'🇧🇬', t:[ { n:'EGN', re:/^\d{10}$/, k:CHK.egnBulgaria } ] },
   { c:'HRV', n:'Croacia', f:'🇭🇷', t:[ { n:'OIB', re:/^\d{11}$/, k:CHK.oibCroacia } ] },
@@ -1853,11 +1853,37 @@ function buscarDatosAnverso(texto){
   if (pais === 'auto') pais = paisPorTexto(t) || 'auto';
   if (pais !== 'ESP' && (!doc || !doc.valido)){
     // candidatos: palabras y grupos de cifras (juntando espacios, puntos o guiones)
+    // muchos números van en trozos (Portugal: 27932766 9 ZY9): se prueban también 2-4 trozos seguidos
     var cands = [];
-    (tn.match(/[A-Z0-9][A-Z0-9 .\/-]{4,22}[A-Z0-9]/g) || []).forEach(function(g){
-      cands.push(g.replace(/[ .\/]/g, ''));
-      g.split(/\s+/).forEach(function(x){ if (x.length >= 6) cands.push(x); });
+    tn.split('\n').forEach(function(l){
+      var tk = l.split(/\s+/).filter(Boolean);
+      for (var a = 0; a < tk.length; a++){
+        var jn = '';
+        for (var b = a; b < Math.min(tk.length, a + 4); b++){
+          jn += tk[b].replace(/[.\/]/g, '');
+          if (jn.length >= 6 && jn.length <= 20) cands.push(jn);
+        }
+      }
     });
+    // el OCR confunde letras y cifras parecidas (Z↔7, O↔0, S↔5...). Con el país conocido se
+    // corrige solo donde el formato exige otra clase de carácter (máscara D = cifra, L = letra):
+    // una única corrección por candidato, nunca probar combinaciones hasta que cuadre.
+    var A_CIFRA = { O:'0', D:'0', Q:'0', I:'1', L:'1', Z:'2', S:'5', B:'8', G:'6', A:'4', T:'7' };
+    var A_LETRA = { '0':'O', '1':'I', '2':'Z', '5':'S', '8':'B', '6':'G', '4':'A', '7':'Z' };
+    var pObj = pais !== 'auto' ? paisPorCodigo(pais) : null;
+    if (pObj){
+      cands.slice().forEach(function(x){
+        pObj.t.forEach(function(tp){
+          if (!tp.m || x.length !== tp.m.length) return;
+          var v = x.split('').map(function(ch, k){
+            if (tp.m[k] === 'D' && /[A-Z]/.test(ch)) return A_CIFRA[ch] || ch;
+            if (tp.m[k] === 'L' && /\d/.test(ch)) return A_LETRA[ch] || ch;
+            return ch;
+          }).join('');
+          if (v !== x) cands.unshift(v);
+        });
+      });
+    }
     var formatoPais = null;
     for (var i = 0; i < cands.length; i++){
       var re = validarEuropeo(cands[i], pais);
