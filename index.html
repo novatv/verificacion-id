@@ -391,7 +391,7 @@ function validarEuropeo(entrada, pais){
   }
   if (formato.length && lista.length === 1)
     return Object.assign(res, formato[0], { valido: true, soloFormato: true,
-      motivo: 'El formato es correcto. Este tipo de número no lleva dígito de control, así que solo se puede comprobar el formato.' });
+      motivo: 'El formato es correcto, pero en ' + formato[0].pais.n + ' este número no lleva dígito de control impreso delante, así que por delante solo se puede comprobar el formato. Para comprobar que la numeración es real, haz la foto de la parte de atrás: las 3 líneas con «<» llevan el número con su dígito de control.' });
   if (fallo){
     Object.assign(res, fallo);
     res.motivo = fallo.pais.c === 'ESP' ? validarDniNie(fallo.entrada).motivo
