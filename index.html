@@ -2063,7 +2063,9 @@ function leerAnverso(c, bbox){
       if (inp){ inp.value = d.doc.entrada; verificarDniAnverso(); }
     } else {
       html += veredicto('avi','!','No he podido leer el número', 'Haz la foto más de cerca, con buena luz y sin reflejos, o escríbelo a mano abajo.');
-      html += '<details><summary>Ver el texto que ha leído</summary><div class="body"><pre style="white-space:pre-wrap;font-size:11px">' + esc((d.texto || '(nada)').trim().slice(0, 1500)) + '</pre></div></details>';
+      html += '<details><summary>Ver el texto que ha leído</summary><div class="body"><pre style="white-space:pre-wrap;font-size:11px">' +
+        esc('[' + c.width + '×' + c.height + ' · ' + (navigator.userAgent.match(/(Firefox|Edg|OPR|Chrome|Version)\/[\d.]+/g) || []).join(' ') + ' · país ' + paisElegido() + ']\n' +
+        (d.texto || '(nada)').trim().slice(0, 1500)) + '</pre></div></details>';
     }
     var hoy = new Date();
     if (d.nac){
