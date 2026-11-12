@@ -1956,6 +1956,8 @@ function buscarDatosAnverso(texto){
     ETQ.forEach(function(e){ var mm; e[1].lastIndex = 0; while ((mm = e[1].exec(l))) etqs.push({ k: e[0], pos: mm.index }); });
     if (!etqs.length) return;
     etqs.sort(function(a, b){ return a.pos - b.pos; });
+    // etiqueta en dos idiomas (SCADENZA / EXPIRY, NASCITA / BIRTH) = una sola fecha
+    etqs = etqs.filter(function(e, k){ return k === 0 || e.k !== etqs[k - 1].k; });
     // fechas en la misma línea, detrás de la etiqueta, o en las dos siguientes
     var fs = fechasDe(l.slice(etqs[0].pos));
     for (var j = 1; j <= 2 && fs.length < etqs.length && lineas[i + j] !== undefined; j++) fs = fs.concat(fechasDe(lineas[i + j]));
