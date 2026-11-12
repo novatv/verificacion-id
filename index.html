@@ -1982,6 +1982,36 @@ function buscarDatosAnverso(texto){
   if (permanente && !etiquetadoCad) cad = null;
   return { doc: doc, nac: nac, cad: cad, permanente: permanente && !cad };
 }
+// En la letra con remates de algunos carnets (Italia) el lector toma la F por una E.
+// Se mira el dibujo de la letra: la E tiene abajo una barra tan larga como la de arriba;
+// la F solo un remate corto. Solo en palabras con cifras (números de documento).
+function corregirEF(res, lienzo){
+  var texto = res.data.text || '';
+  try {
+    var cx = lienzo.getContext('2d');
+    (res.data.words || []).forEach(function(w){
+      if (!/^[A-Z0-9]{6,12}$/.test(w.text) || !/\d{3}/.test(w.text) || w.text.indexOf('E') < 0 || !w.symbols) return;
+      var nueva = w.symbols.map(function(sb){
+        if (sb.text !== 'E') return sb.text;
+        var b = sb.bbox, W = b.x1 - b.x0, H = b.y1 - b.y0;
+        if (W < 8 || H < 12) return 'E';
+        var d = cx.getImageData(b.x0, b.y0, W, H).data, mn = 255, mx = 0, i;
+        for (i = 0; i < d.length; i += 4){ if (d[i] < mn) mn = d[i]; if (d[i] > mx) mx = d[i]; }
+        if (mx - mn < 60) return 'E';
+        var um = (mn + mx) / 2;
+        function alcance(y0, y1){
+          var m = 0;
+          for (var y = y0; y < y1; y++) for (var x = W - 1; x >= m; x--) if (d[(y * W + x) * 4] < um){ m = x + 1; break; }
+          return m / W;
+        }
+        var arriba = alcance(0, Math.round(H * 0.3)), abajo = alcance(Math.round(H * 0.75), H);
+        return arriba > 0.85 && abajo < 0.78 * arriba ? 'F' : 'E';
+      }).join('');
+      if (nueva !== w.text) texto = texto.split(w.text).join(nueva);
+    });
+  } catch (e) {}
+  return texto;
+}
 function fechaTxt(f){ return ('0'+f.getDate()).slice(-2) + '/' + ('0'+(f.getMonth()+1)).slice(-2) + '/' + f.getFullYear(); }
 function leerAnverso(c, bbox){
   var caja = document.getElementById('res-foto');
@@ -2023,7 +2053,7 @@ function leerAnverso(c, bbox){
       n++;
       if (prog && n > 1) prog.textContent = 'Leyendo otra vez la foto (' + n + ')…';
       return wk.recognize(preparar(giro, sinFiltro, r)).then(function(res){
-        textos += '\n' + res.data.text;
+        textos += '\n' + corregirEF(res, o);
         if (res.data.confidence > mejorConf){ mejorConf = res.data.confidence; mejorGiro = giro; }
         mejor = buscarDatosAnverso(textos);
         return completo(mejor);
@@ -2046,7 +2076,7 @@ function leerAnverso(c, bbox){
       // última pasada solo para el número: únicamente cifras y letras, en el mejor giro
       return wk.setParameters({ tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ' })
         .then(function(){ return wk.recognize(preparar(mejorGiro, true, null)); })
-        .then(function(res){ textos += '\n' + res.data.text; return buscarDatosAnverso(textos); })
+        .then(function(res){ textos += '\n' + corregirEF(res, o); return buscarDatosAnverso(textos); })
         .then(function(d2){ return wk.setParameters({ tessedit_char_whitelist: '' }).then(function(){ return d2; }); });
     }).then(function(d){ o.width = o.height = 0; d.texto = textos; return d; });
   }).then(function(d){
