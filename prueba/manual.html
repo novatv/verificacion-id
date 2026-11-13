@@ -2183,11 +2183,24 @@ function resumenFinal(r, pista){
   else dudas.push('no se ha leído la caducidad');
   if (r.cruce === true) partes.push('delante y detrás coinciden');
   else if (r.cruce === false) malos.push('delante y detrás NO coinciden');
+  // Porcentaje de confianza (sí o no): numeración 35, edad 20, vigencia 20, cruce delante/detrás 25
+  var pts = 0;
+  if (r.numero) pts += r.numero.ok ? 35 : (r.numero.aviso ? 18 : 0);
+  if (r.nac && edadDe(r.nac) >= 18) pts += 20;
+  if (r.permanente || (r.cad && r.cad > new Date())) pts += 20;
+  pts += r.cruce === true ? 25 : (r.cruce === false ? 0 : 10);
+  if (malos.length) pts = Math.min(pts, 30);
+  var si = !malos.length && pts >= 70;
+  var cartel = '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;margin:8px 0;background:' +
+    (si ? 'rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.5)' : 'rgba(255,77,109,.15);border:1px solid rgba(255,77,109,.5)') + '">' +
+    '<div style="font-size:40px;font-weight:800;color:' + (si ? '#22c55e' : '#ff4d6d') + '">' + (si ? 'SÍ' : 'NO') + '</div>' +
+    '<div><div style="font-size:28px;font-weight:800">' + pts + ' %</div><div style="opacity:.75;font-size:13px">' +
+    (si ? 'Los datos del documento son coherentes' : 'No se puede dar por bueno') + '</div></div></div>';
   var html;
   if (malos.length) html = veredicto('mal', '✕', 'NO APTO · ' + malos.join(' · '), partes.length ? 'Correcto: ' + partes.join(', ') + '.' : '');
   else if (dudas.length) html = veredicto('avi', '!', 'REVISAR · ' + dudas.join(' · '), (partes.length ? 'Correcto: ' + partes.join(', ') + '. ' : '') + 'Repite la foto con más luz o compruébalo a mano.');
   else html = veredicto('ok', '✓', 'APTO · ' + partes.join(' · '), pista || '');
-  return '<div class="seccion">Resumen</div>' + html;
+  return '<div class="seccion">Resumen</div>' + cartel + html;
 }
 
 function entregarResultado(c, lectura, validacion){

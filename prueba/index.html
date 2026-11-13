@@ -308,9 +308,17 @@ function pResultado(){
     else add(sim >= SIMILITUD_MINIMA ? 'ok' : 'bad', 'Misma cara que el documento', Math.round(sim * 100) + ' % de parecido');
     var mal = checks.some(function(c){ return c.nivel === 'bad'; });
     if (mal) fallo(); else guardarIntentos({ n:0, hasta:0 });
+    // Porcentaje sí o no: cada comprobación vale 1 (correcta), 0,5 (a revisar) o 0 (mal)
+    var total = checks.reduce(function(t, c){ return t + (c.nivel === 'ok' ? 1 : c.nivel === 'warn' ? 0.5 : 0); }, 0);
+    var pct = Math.round(100 * total / checks.length); if (mal) pct = Math.min(pct, 30);
+    var si = !mal && pct >= 70;
+    var cartel = '<div class="card" style="display:flex;align-items:center;gap:14px;border-color:' + (si ? 'var(--ok)' : 'var(--bad)') + '">' +
+      '<div style="font-size:40px;font-weight:800" class="' + (si ? 'ok' : 'bad') + '">' + (si ? 'SÍ' : 'NO') + '</div>' +
+      '<div><div style="font-size:28px;font-weight:800">' + pct + ' %</div><div style="color:var(--mute);font-size:13px">' +
+      (si ? 'Identidad verificada (revisa las fotos)' : 'No se puede dar por buena') + '</div></div></div>';
     var fotos = ['selfie','cuerpo','permiso1','permiso2'].filter(function(k){ return E.fotos[k]; })
       .map(function(k){ return '<img src="' + E.fotos[k] + '">'; }).join('');
-    pintar('<div class="card"><h2 class="' + (mal ? 'bad' : 'ok') + '">' + (mal ? '✕ No verificado' : '✓ Verificado (falta revisar las fotos)') + '</h2>' +
+    pintar(cartel + '<div class="card"><h2 class="' + (mal ? 'bad' : 'ok') + '">' + (mal ? '✕ No verificado' : '✓ Verificado (falta revisar las fotos)') + '</h2>' +
       checks.map(function(c){ return '<div class="chk"><b class="' + c.nivel + '">' + (c.nivel === 'ok' ? '✓' : c.nivel === 'bad' ? '✕' : '!') + '</b><div>' + esc(c.t) + '<br><span style="color:var(--mute);font-size:13px">' + esc(c.d) + '</span></div></div>'; }).join('') +
       '</div><div class="card"><h2>Fotos para revisar</h2><div class="fotos">' + fotos + '</div></div>' +
       '<button class="btn sec" onclick="location.reload()">Nueva verificación</button>');
