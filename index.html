@@ -1905,6 +1905,13 @@ function buscarDatosAnverso(texto){
       cands.slice().forEach(function(x){
         pObj.t.forEach(function(tp){
           if (!tp.m || x.length !== tp.m.length) return;
+          // un rótulo impreso (HOLDER'S SIGNATURE = 16 letras) no es un número mal leído:
+          // si la máscara pide cifras y no hay ninguna, o habría que cambiar más de 2
+          // caracteres, no se toca
+          var cambios = 0;
+          for (var q = 0; q < x.length; q++)
+            if ((tp.m[q] === 'D' && /[A-Z]/.test(x[q])) || (tp.m[q] === 'L' && /\d/.test(x[q]))) cambios++;
+          if (cambios > 2 || (/D/.test(tp.m) && !/\d/.test(x))) return;
           var v = x.split('').map(function(ch, k){
             if (tp.m[k] === 'D' && /[A-Z]/.test(ch)) return A_CIFRA[ch] || ch;
             if (tp.m[k] === 'L' && /\d/.test(ch)) return A_LETRA[ch] || ch;
