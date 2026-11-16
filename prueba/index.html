@@ -188,6 +188,14 @@
 })();
 
 var CFG=window.REGULA_CONFIG||{};
+// Servidor de Regula (Document Reader Web Service), como el de Kinky. Si no hay o no responde, se lee en el teléfono.
+// Para probarlo sin publicar su dirección: abrir la página con ?servidor=http://localhost:8080 (se recuerda; ?servidor= lo borra).
+var SERVIDOR=CFG.documentServiceUrl||'';
+try{
+  var qs=new URLSearchParams(location.search);
+  if(qs.has('servidor'))localStorage.setItem('regula_servidor',qs.get('servidor'));
+  SERVIDOR=(localStorage.getItem('regula_servidor')||SERVIDOR).replace(/\/+$/,'');
+}catch(e){}
 var EDAD_MINIMA=21;
 // Espacio Económico Europeo + Suiza: no necesitan permiso de trabajo (igual que Kinky).
 var EEE={AUT:1,BEL:1,BGR:1,HRV:1,CYP:1,CZE:1,DNK:1,EST:1,FIN:1,FRA:1,DEU:1,GRC:1,HUN:1,IRL:1,ITA:1,LVA:1,LTU:1,LUX:1,MLT:1,NLD:1,POL:1,PRT:1,ROU:1,SVK:1,SVN:1,ESP:1,SWE:1,ISL:1,LIE:1,NOR:1,CHE:1};
@@ -366,10 +374,34 @@ function fotoDelante(){
   if(!window.Camara||!window.Anverso)return pError('No se pudo cargar el lector de la cara delantera.');
   Camara.foto({marco:'documento',titulo:'Parte delantera del documento',ayuda:'Que se vea entera dentro del marco, con buena luz y sin reflejos.'}).then(function(f){
     pintar('<div class="panel"><h2>Leyendo el documento…</h2><p class="lede tight" id="ocrProg">Leyendo el número y las fechas…</p></div>');
-    return Anverso.leer(f.lienzo,function(t){var p=$('ocrProg');if(p)p.textContent=t;}).then(function(d){resultadoDelante(d,f);});
+    function enTelefono(){return Anverso.leer(f.lienzo,function(t){var p=$('ocrProg');if(p)p.textContent=t;}).then(function(d){resultadoDelante(d,f);});}
+    if(!SERVIDOR)return enTelefono();
+    // Con servidor: lo lee Regula entero (texto impreso, tipo de documento y seguridad). Si falla o no lo reconoce, se lee en el teléfono.
+    return leerServidor(f).then(function(doc){
+      if(!doc)return enTelefono();
+      resultado(doc);
+    },function(){return enTelefono();});
   }).catch(function(e){
     if(e&&e.message==='cancelado')return documento();
     pError('No se pudo leer la cara delantera: '+(e&&e.message||e));
+  });
+}
+function leerServidor(f){
+  var ctl=window.AbortController?new AbortController():null, t=setTimeout(function(){if(ctl)ctl.abort();},25000);
+  return fetch(SERVIDOR+'/api/process',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctl?ctl.signal:undefined,
+    body:JSON.stringify({processParam:{scenario:'FullProcess',dateFormat:'dd.MM.yyyy'},List:[{ImageData:{image:f.dataUrl.split(',')[1]},light:6,page_idx:0}]})
+  }).then(function(r){clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(j){
+    var lista=(j.ContainerList&&j.ContainerList.List)||[];
+    function cont(k){for(var i=0;i<lista.length;i++)if(lista[i][k])return lista[i][k];return null;}
+    var texto=cont('Text'), campos=(texto&&texto.fieldList)||[];
+    if(!campos.length)return null;
+    var cand=cont('OneCandidate'), st=cont('Status')||{};
+    return {
+      servidor:true,
+      nombreDoc:cand&&cand.DocumentName||'',
+      text:{getFieldValue:function(c){for(var i=0;i<campos.length;i++)if(campos[i].fieldType===c&&campos[i].value)return campos[i].value;return '';}},
+      status:{overallStatus:st.overallStatus,detalle:st.detailsOptical||{}}
+    };
   });
 }
 function resultadoDelante(d,f){
@@ -448,7 +480,7 @@ function resultado(doc){
   var txt=doc.text,checks=[],datos=[];
   function add(nivel,t,d){checks.push({nivel:nivel,t:t,d:d});}
   function val(code){return txt&&txt.getFieldValue?(txt.getFieldValue(code)||''):'';}
-  var nombre=(val(6)||((val(4)+' '+val(5)).trim()));
+  var nombre=(val(25)||((val(8)+' '+val(9)).trim()));  // 25 = apellidos y nombre; 8 = apellidos; 9 = nombre
   var num=val(2);
   var fnac=fechaRegula(val(5)||val(51));
   var fcad=fechaRegula(val(3));
@@ -463,6 +495,15 @@ function resultado(doc){
   if(fnac)datos.push(['Nacimiento',fnac.toLocaleDateString('es')]);
   if(fcad)datos.push(['Caducidad',fcad.toLocaleDateString('es')]);
 
+  if(doc.servidor){
+    // Lectura completa en el servidor de Regula: tipo de documento, coherencia del texto y elementos de seguridad.
+    var det=doc.status.detalle||{};
+    function nivel(v){return v===1?'ok':v===0?'bad':'warn';}
+    if(doc.nombreDoc)datos.unshift(['Documento',doc.nombreDoc]);
+    add(det.docType===1?'ok':'warn','Tipo de documento reconocido',doc.nombreDoc||'No identificado');
+    add(nivel(det.text),'Texto del documento',det.text===1?'Coherente':det.text===0?'Hay datos que no cuadran':'No comprobado del todo');
+    add(nivel(det.security),'Elementos de seguridad',det.security===1?'Correctos':det.security===0?'Regula no los da por buenos':'No comprobados en esta foto');
+  }else
   add(estado===1?'ok':estado===0?'bad':'warn','Dígitos de control del documento',estado===1?'Correctos':estado===0?'No cuadran':'No comprobados del todo');
   if(fnac){var edad=edadDe(fnac);add(edad>=EDAD_MINIMA?'ok':'bad',EDAD_MINIMA+' años o más',edad+' años');}
   else add('warn','Edad','No se pudo leer la fecha de nacimiento');
