@@ -303,11 +303,12 @@ function documento(){
         '<button type="button" data-tipo="dni" aria-pressed="'+(E.tipo==='dni')+'">'+svg('id')+'DNI / ID</button>'+
         '<button type="button" data-tipo="pasaporte" aria-pressed="'+(E.tipo==='pasaporte')+'">'+svg('passport')+'Pasaporte</button>'+
       '</div>'+
+      '<p class="lede tight" id="caraHint" style="margin-top:14px">'+caraTexto()+'</p>'+
       '<button class="btn btn-gold" id="escanear"'+(hayLicencia()?'':' disabled')+'>'+svg('camera')+'Hacer foto del documento</button>'+
       (hayLicencia()?'':'<a class="btn btn-ghost" href="manual.html">'+svg('camera')+'Usar el lector gratuito</a>')+
     '</div>');
   Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(b){
-    b.onclick=function(){E.tipo=b.getAttribute('data-tipo');Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(x){x.setAttribute('aria-pressed',x===b);});};
+    b.onclick=function(){E.tipo=b.getAttribute('data-tipo');Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(x){x.setAttribute('aria-pressed',x===b);});$('caraHint').innerHTML=caraTexto();};
   });
   if(hayLicencia())$('escanear').onclick=escanear;
 }
@@ -331,7 +332,7 @@ function prepararDocumento(){
 
 function escanear(){
   if(!hayLicencia())return;
-  pintar('<div class="panel"><h2>Abriendo la cámara…</h2><p class="lede tight">Encaja la cara delantera del documento dentro del marco, sin reflejos ni sombras, y pulsa el botón para hacer la foto.</p></div>');
+  pintar('<div class="panel"><h2>Abriendo la cámara…</h2><p class="lede tight">'+caraTexto()+' Que quepa entera en el marco, sin reflejos ni sombras, y pulsa el botón para hacer la foto.</p></div>');
   prepararDocumento().then(function(){
     var capa=$('capaRegula');
     capa.innerHTML='<document-reader></document-reader>';
@@ -350,6 +351,19 @@ function escanear(){
       if(d.action==='CLOSE'){capa.classList.add('oculto');capa.innerHTML='';documento();}
     });
   }).catch(function(e){pError('No se pudo iniciar Regula: '+(e&&e.message||e));});
+}
+
+// El lector solo sabe leer las líneas «<<<». En el pasaporte están en la página de la foto; en el DNI y las tarjetas, detrás.
+function caraTexto(){
+  return E.tipo==='pasaporte'
+    ?'Haz la foto de la página del pasaporte que tiene tu foto y las líneas «&lt;&lt;&lt;».'
+    :'Haz la foto de la parte de atrás del DNI o tarjeta, la que tiene las tres líneas «&lt;&lt;&lt;».';
+}
+function sinLineas(){
+  pintar('<div class="panel"><h2>No se ven las líneas «&lt;&lt;&lt;»</h2>'+
+    '<p class="lede">El documento se ha encontrado, pero en la foto no están las líneas que hay que leer. '+caraTexto()+'</p>'+
+    '<button class="btn btn-gold" onclick="escanear()">'+svg('camera')+'Repetir la foto</button>'+
+    '<button class="btn btn-plain" onclick="documento()">Cambiar el tipo de documento</button></div>');
 }
 
 // Cámara a pantalla completa: la imagen llena toda la pantalla (sin franjas) y se oculta la barra del navegador.
@@ -390,6 +404,8 @@ function resultado(doc){
   var fcad=fechaRegula(val(3));
   var nac=(val(26)||val(11)||'').toUpperCase();
   var estado=doc.status&&doc.status.overallStatus;
+  // Foto sin líneas «<<<» (por ejemplo, la cara delantera de un DNI): no es un documento malo, falta la otra cara.
+  if(!num&&!fnac&&!fcad&&!nombre)return sinLineas();
 
   if(nombre)datos.push(['Nombre',nombre]);
   if(num)datos.push(['Número',num]);
