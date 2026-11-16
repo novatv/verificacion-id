@@ -55,12 +55,15 @@
   .lede{color:var(--mute);font-size:14.5px;line-height:1.6;margin:0}
   .lede.tight{margin-bottom:0}
 
-  label.field{display:block;margin-top:16px}
-  label.field .lab{display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:500;margin-bottom:8px}
-  label.field .lab svg{width:14px;height:14px;color:var(--gold)}
+  .field{display:block;margin-top:16px}
+  .fecha{display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:10px}
+  .fecha input{text-align:center;font-variant-numeric:tabular-nums}
+  .ferr{color:var(--bad);font-size:13px;margin-top:8px;min-height:18px}
+  .field .lab{display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:500;margin-bottom:8px}
+  .field .lab svg{width:14px;height:14px;color:var(--gold)}
   .control{position:relative}
   .control svg.chev{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--gold);pointer-events:none}
-  select,input[type=date],input[type=password]{
+  select,input[type=date],input[type=password],input.num{
     width:100%;appearance:none;-webkit-appearance:none;background:#0b0b0e;border:1px solid var(--line);
     color:var(--ink);font-family:var(--sans);font-size:16px;padding:14px 15px;border-radius:12px;transition:border-color .25s,box-shadow .25s
   }
@@ -216,20 +219,50 @@ function pintar(html){$('pantalla').innerHTML='<div class="screen">'+html+'</div
 function validacion(){
   var opts='<option value="" '+(E.nacionalidad?'':'selected')+' disabled>Selecciona tu nacionalidad</option>'+
     (window.PAISES||[]).map(function(p){return '<option value="'+p[0]+'"'+(E.nacionalidad===p[0]?' selected':'')+'>'+esc(p[1])+'</option>';}).join('');
+  var f0=(E.fnac||'').split('-');
   pintar(
     '<div class="panel">'+
       '<h2>Tu proceso de validación</h2>'+
       '<p class="lede">Empezamos por tu nacionalidad y tu fecha de nacimiento. Con eso decidimos qué controles necesitas: identidad, documento y, si procede, permiso de trabajo.</p>'+
       '<label class="field"><span class="lab">'+svg('globe')+'Nacionalidad</span>'+
         '<span class="control"><select id="nac" class="'+(E.nacionalidad?'':'ph')+'">'+opts+'</select>'+svg('chev','chev')+'</span></label>'+
-      '<label class="field"><span class="lab">'+svg('cal')+'Fecha de nacimiento</span>'+
-        '<span class="control"><input type="date" id="fnac" value="'+esc(E.fnac)+'" max="'+new Date().toISOString().slice(0,10)+'"></span></label>'+
+      '<div class="field" role="group" aria-labelledby="fnacLab"><span class="lab" id="fnacLab">'+svg('cal')+'Fecha de nacimiento</span>'+
+        '<div class="fecha">'+
+          '<input class="num" id="fd" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="bday-day" maxlength="2" placeholder="Día" aria-label="Día" value="'+esc(f0[2]||'')+'">'+
+          '<input class="num" id="fm" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="bday-month" maxlength="2" placeholder="Mes" aria-label="Mes" value="'+esc(f0[1]||'')+'">'+
+          '<input class="num" id="fa" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="bday-year" maxlength="4" placeholder="Año" aria-label="Año" value="'+esc(f0[0]||'')+'">'+
+        '</div><div class="ferr" id="ferr" role="alert"></div></div>'+
       '<button class="btn btn-gold" id="seguir">Continuar'+svg('arrowR')+'</button>'+
     '</div>');
   $('nac').onchange=function(){this.classList.remove('ph');};
+  // Día, mes y año con teclado numérico: al completar un campo salta solo al siguiente.
+  var campos=[$('fd'),$('fm'),$('fa')];
+  campos.forEach(function(c,i){
+    c.oninput=function(){
+      c.value=c.value.replace(/\D/g,'');$('ferr').textContent='';
+      var lleno=c.value.length>=c.maxLength||(i===0&&+c.value>3)||(i===1&&+c.value>1);
+      if(lleno&&campos[i+1])campos[i+1].focus();
+    };
+    c.onkeydown=function(e){
+      if(e.key==='Backspace'&&!c.value&&campos[i-1]){campos[i-1].focus();}
+      if(e.key==='Enter')$('seguir').click();
+    };
+  });
+  function leerFecha(){
+    var d=+$('fd').value,m=+$('fm').value,a=+$('fa').value,hoy=new Date();
+    if(!d||!m||$('fa').value.length!==4)return '';
+    var f=new Date(a,m-1,d);
+    if(f.getFullYear()!==a||f.getMonth()!==m-1||f.getDate()!==d||a<1900||f>hoy)return '';
+    return a+'-'+('0'+m).slice(-2)+'-'+('0'+d).slice(-2);
+  }
   $('seguir').onclick=function(){
-    E.nacionalidad=$('nac').value; E.fnac=$('fnac').value;
-    if(!E.nacionalidad||!E.fnac){ (!E.nacionalidad?$('nac'):$('fnac')).focus(); return; }
+    E.nacionalidad=$('nac').value;
+    if(!E.nacionalidad){$('nac').focus();return;}
+    E.fnac=leerFecha();
+    if(!E.fnac){
+      $('ferr').textContent='Escribe una fecha válida: día, mes y año con cuatro cifras.';
+      (!$('fd').value?$('fd'):!$('fm').value?$('fm'):$('fa')).focus();return;
+    }
     controles();
   };
 }
