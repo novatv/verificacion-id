@@ -269,7 +269,7 @@ function documento(){
         '<button type="button" data-tipo="dni" aria-pressed="'+(E.tipo==='dni')+'">'+svg('id')+'DNI / ID</button>'+
         '<button type="button" data-tipo="pasaporte" aria-pressed="'+(E.tipo==='pasaporte')+'">'+svg('passport')+'Pasaporte</button>'+
       '</div>'+
-      '<button class="btn btn-gold" id="escanear"'+(hayLicencia()?'':' disabled')+'>'+svg('camera')+'Escanear el documento</button>'+
+      '<button class="btn btn-gold" id="escanear"'+(hayLicencia()?'':' disabled')+'>'+svg('camera')+'Hacer foto del documento</button>'+
       (hayLicencia()?'':'<a class="btn btn-ghost" href="manual.html">'+svg('camera')+'Usar el lector gratuito</a>')+
     '</div>');
   Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(b){
@@ -284,7 +284,8 @@ function prepararDocumento(){
   window.RegulaDocumentSDK=window.RegulaDocumentSDK||new window.Regula.DocumentReaderService();
   docListo=window.Regula.defineComponents().then(function(){
     var sdk=window.RegulaDocumentSDK;
-    var param={scenario:'MrzAndLocate',minimalHolderAge:EDAD_MINIMA};
+    // Solo la cara delantera: no se pide la segunda cara, y si delante no hay líneas «<» (DNI) basta con encuadrarlo.
+    var param={scenario:'MrzOrLocate',multipageProcessing:false,minimalHolderAge:EDAD_MINIMA};
     if(CFG.documentServiceUrl)param.backendProcessing={serviceURL:CFG.documentServiceUrl};
     return sdk.initialize(CFG.license?{license:CFG.license}:undefined).then(function(){
       sdk.recognizerProcessParam={processParam:param};
@@ -296,13 +297,13 @@ function prepararDocumento(){
 
 function escanear(){
   if(!hayLicencia())return;
-  pintar('<div class="panel"><h2>Abriendo la cámara…</h2><p class="lede tight">Encaja el documento dentro del marco, sin reflejos ni sombras.</p></div>');
+  pintar('<div class="panel"><h2>Abriendo la cámara…</h2><p class="lede tight">Encaja la cara delantera del documento dentro del marco, sin reflejos ni sombras, y pulsa el botón para hacer la foto.</p></div>');
   prepararDocumento().then(function(){
     var capa=$('capaRegula');
     capa.innerHTML='<document-reader></document-reader>';
     capa.classList.remove('oculto');
     var el=capa.querySelector('document-reader');
-    el.settings={locale:'es',copyright:false,startScreen:false,closeButton:true,captureButton:false,skipButton:false,uploadFileButton:false,multipageProcessing:true,videoRecord:false,newLayout:true,cameraFrameBorderWidth:2};
+    el.settings={locale:'es',copyright:false,startScreen:false,closeButton:true,captureButton:true,captureMode:'captureFrame',captureButtonDelay:0,skipButton:false,uploadFileButton:false,multipageProcessing:false,videoRecord:false,newLayout:true,cameraFrameBorderWidth:2};
     el.addEventListener('document-reader',function(ev){
       var d=ev.detail;if(!d)return;
       if(d.action==='PROCESS_FINISHED'){
