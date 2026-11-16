@@ -138,7 +138,8 @@
   #acceso input{width:240px;text-align:center;font-size:24px;letter-spacing:.5em;padding:15px 12px;font-family:var(--serif)}
   #acceso .btn{width:240px}
   #accesoError{min-height:18px;color:var(--bad);font-size:13px}
-  .regula{position:fixed;inset:0;z-index:50;background:#000}
+  .regula{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;z-index:50;background:#000}
+  .regula document-reader{display:block;width:100%;height:100%}
 </style>
 <script src="regula-config.js"></script>
 <script src="paises.js"></script>
@@ -337,8 +338,10 @@ function escanear(){
     capa.classList.remove('oculto');
     var el=capa.querySelector('document-reader');
     el.settings={locale:'es',copyright:false,startScreen:false,closeButton:true,captureButton:true,captureMode:'captureFrame',captureButtonDelay:0,skipButton:false,uploadFileButton:false,multipageProcessing:false,videoRecord:false,newLayout:true,cameraFrameBorderWidth:2};
+    pantallaCompleta(capa,el);
     el.addEventListener('document-reader',function(ev){
       var d=ev.detail;if(!d)return;
+      if(d.action==='PROCESS_FINISHED'||d.action==='CLOSE')salirPantallaCompleta();
       if(d.action==='PROCESS_FINISHED'){
         capa.classList.add('oculto');capa.innerHTML='';
         if(!d.data||d.data.status!==1||!d.data.response)return pError('No se ha podido leer el documento. Limpia la cámara, evita reflejos y que se vea entero.');
@@ -347,6 +350,30 @@ function escanear(){
       if(d.action==='CLOSE'){capa.classList.add('oculto');capa.innerHTML='';documento();}
     });
   }).catch(function(e){pError('No se pudo iniciar Regula: '+(e&&e.message||e));});
+}
+
+// Cámara a pantalla completa: la imagen llena toda la pantalla (sin franjas) y se oculta la barra del navegador.
+var vigiaCamara=null;
+function pantallaCompleta(capa,el){
+  var CSS='video{object-fit:cover!important;background:#000!important}';
+  function poner(raiz){
+    if(!raiz)return;
+    if(raiz.querySelector&&!raiz.querySelector('style[data-fs]')){
+      var st=document.createElement('style');st.setAttribute('data-fs','1');st.textContent=CSS;raiz.appendChild(st);
+    }
+    Array.prototype.forEach.call(raiz.querySelectorAll('*'),function(n){if(n.shadowRoot)poner(n.shadowRoot);});
+  }
+  function repasar(){poner(el.shadowRoot);}
+  repasar();
+  if(vigiaCamara)clearInterval(vigiaCamara);
+  vigiaCamara=setInterval(function(){if(!el.isConnected){clearInterval(vigiaCamara);vigiaCamara=null;return;}repasar();},400);
+  var pedir=capa.requestFullscreen||capa.webkitRequestFullscreen;
+  if(pedir){try{var p=pedir.call(capa);if(p&&p.catch)p.catch(function(){});}catch(e){}}
+}
+function salirPantallaCompleta(){
+  if(vigiaCamara){clearInterval(vigiaCamara);vigiaCamara=null;}
+  var salir=document.exitFullscreen||document.webkitExitFullscreen;
+  if(salir&&(document.fullscreenElement||document.webkitFullscreenElement)){try{var p=salir.call(document);if(p&&p.catch)p.catch(function(){});}catch(e){}}
 }
 
 function pError(msg){
