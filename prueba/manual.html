@@ -171,6 +171,7 @@
   </div>
 
   <img id="miniatura" class="oculto" alt="Foto capturada">
+  <div id="res-edicion"></div>
   <div id="res-foto"></div>
 
   <details>
@@ -178,6 +179,7 @@
     <div class="body">
       <p><strong>De la imagen</strong> analiza lo que hace que una verificación la rechace: nitidez, reflejos, luz, colores desvirtuados y resolución.</p>
       <p><strong>Delante</strong> lee el número del documento de identidad (DNI y NIE de España y los de los demás países de Europa), comprueba que la numeración cuadra con su dígito o letra de control, calcula la edad y mira si está caducado. <strong>Detrás</strong> lee las 3 líneas con «&lt;» y recalcula sus dígitos de control. Si cuadran, el nombre, la fecha de nacimiento y el número son coherentes con lo impreso.</p>
+      <p><strong>Retoques:</strong> si la foto viene de la galería, mira si el archivo pasó por un programa de edición o por inteligencia artificial, si es la foto original de la cámara y si hay zonas tapadas o pegadas (las marca en rojo). Un retoque fino, o una foto reenviada por WhatsApp, puede no dejar rastro: lo que de verdad delata un dato cambiado son los dígitos de control y que delante y detrás coincidan.</p>
       <p><strong>Lo que no puede hacer:</strong> confirmar autenticidad. Eso solo lo puede hacer el organismo emisor o la lectura del chip NFC con las claves oficiales. Verde = «se lee bien y es coherente», no «es auténtico».</p>
     </div>
   </details>
@@ -209,6 +211,7 @@
 
 <canvas id="lienzo" class="oculto"></canvas>
 
+<script src="edicion.js"></script>
 <script>
 /* ============================================================
    Núcleo de validación — Verificador de Documentos
@@ -1515,6 +1518,7 @@ function cambiarModo(m){
   modo = m;
   cerrarCamara();
   document.getElementById('res-foto').innerHTML = '';
+  ultimaEdicion = null; pintarEdicion();
   document.getElementById('miniatura').classList.add('oculto');
   var bd = document.getElementById('m-delante'), br = document.getElementById('m-reverso');
   bd.style.background = m === 'delante' ? 'var(--acc)' : 'transparent';
@@ -1552,9 +1556,9 @@ function paisElegido(){ var sp = document.getElementById('sel-pais'); return sp 
 
 function abrirCamara(){
   document.getElementById('res-foto').innerHTML = '';
+  ultimaEdicion = null; pintarEdicion();
   document.getElementById('miniatura').classList.add('oculto');
-  // solo la toma de foto con la cámara del teléfono: sin marco ni captura automática
-  camaraNativa(); return;
+  // cámara EN VIVO: lee el documento en directo, sin galería (así no cuela una captura de pantalla)
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ camaraNativa(); return; }
   navigator.mediaDevices.getUserMedia({
     video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
@@ -1735,6 +1739,7 @@ function disparar(){
   c.getContext('2d').drawImage(v, 0, 0);
   escaneando = false;
   cerrarCamara();
+  ultimaEdicion = { vivo: true, nivel: 'bien', puntos: [] }; pintarEdicion();
   if (modo === 'delante') procesarDelante(c); else procesarLienzo(c);
 }
 
@@ -2132,9 +2137,41 @@ function verificarDniAnverso(){
   caja.style.marginTop = '12px';
 }
 
+// ¿La foto está retocada? Resultado de edicion.js para la última foto
+var ultimaEdicion = null;
+function pintarEdicion(){
+  var caja = document.getElementById('res-edicion'), e = ultimaEdicion;
+  if (!caja) return;
+  if (!e){ caja.innerHTML = ''; return; }
+  var html = '<div class="seccion">¿La foto está retocada?</div>';
+  if (e.vivo){
+    html += veredicto('ok','✓','Hecha en directo con la cámara','No ha pasado por ningún programa. Esto no descarta un documento físico falso ni una foto hecha a una pantalla.');
+  } else {
+    if (e.nivel === 'mal') html += veredicto('mal','✕','Foto editada','El archivo ha pasado por un programa de retoque. Pide la foto original, hecha en el momento.');
+    else if (e.retoque) html += veredicto('avi','!','Posible retoque','Hay zonas que no encajan con el resto de la foto. Están marcadas en rojo: compara ahí con el documento.');
+    else if (e.nivel === 'aviso') html += veredicto('avi','!','No es la foto original','Sin el archivo original de la cámara no se puede descartar un retoque. Pide que la hagan en directo.');
+    else html += veredicto('ok','✓','Sin señales de retoque','Archivo original de cámara, con la misma compresión y el mismo grano en toda la imagen.');
+    if (e.mapa) html += '<img src="' + e.mapa + '" alt="Zonas sospechosas marcadas en rojo" style="display:block;width:100%;border-radius:12px;margin:8px 0">';
+    var iconos = { bien:'✓', aviso:'!', mal:'✕' }, clases = { bien:'ok', aviso:'aviso', mal:'mal' };
+    e.puntos.forEach(function(p){
+      html += '<div class="chk '+clases[p.nivel]+'"><span class="p">'+iconos[p.nivel]+'</span>'+
+              '<span class="n">'+esc(p.titulo)+'<div class="d" style="font-family:inherit">'+esc(p.detalle)+'</div></span></div>';
+    });
+  }
+  caja.innerHTML = html;
+}
+
 function archivoElegido(inp){
   var f = inp.files && inp.files[0];
   if (!f) return;
+  inp.value = '';
+  ultimaEdicion = null; pintarEdicion();
+  if (!window.Edicion) return abrirArchivo(f);
+  document.getElementById('res-foto').innerHTML = '<div class="card procesando"><div class="rueda"></div>Buscando retoques en la foto…</div>';
+  Edicion.analizar(f).then(function(r){ ultimaEdicion = r; pintarEdicion(); }).catch(function(){}).then(function(){ abrirArchivo(f); });
+}
+
+function abrirArchivo(f){
   var img = new Image();
   img.onload = function(){
     var maxL = 3000;  // con más resolución se leen bien las letras aunque el documento salga pequeño en la foto
@@ -2151,7 +2188,6 @@ function archivoElegido(inp){
       veredicto('avi','!','No se pudo abrir la imagen','Prueba con otra foto (JPG o PNG).');
   };
   img.src = URL.createObjectURL(f);
-  inp.value = '';
 }
 
 /* ================= Procesado y resultados ================= */
@@ -2183,6 +2219,13 @@ function resumenFinal(r, pista){
   else dudas.push('no se ha leído la caducidad');
   if (r.cruce === true) partes.push('delante y detrás coinciden');
   else if (r.cruce === false) malos.push('delante y detrás NO coinciden');
+  var ed = ultimaEdicion && !ultimaEdicion.vivo ? ultimaEdicion : null;
+  if (ed){
+    if (ed.nivel === 'mal') malos.push('la foto está EDITADA');
+    else if (ed.retoque) dudas.push('posible retoque en la foto');
+    else if (ed.nivel === 'aviso') dudas.push('no es la foto original');
+    else partes.push('foto sin retoques');
+  }
   // Porcentaje de confianza (sí o no): numeración 35, edad 20, vigencia 20, cruce delante/detrás 25
   var pts = 0;
   if (r.numero) pts += r.numero.ok ? 35 : (r.numero.aviso ? 18 : 0);
@@ -2190,6 +2233,7 @@ function resumenFinal(r, pista){
   if (r.permanente || (r.cad && r.cad > new Date())) pts += 20;
   pts += r.cruce === true ? 25 : (r.cruce === false ? 0 : 10);
   if (malos.length) pts = Math.min(pts, 30);
+  else if (ed && ed.retoque) pts = Math.min(pts, 60);   // con zonas sospechosas no se da por bueno
   var si = !malos.length && pts >= 70;
   var cartel = '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:14px;margin:8px 0;background:' +
     (si ? 'rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.5)' : 'rgba(255,77,109,.15);border:1px solid rgba(255,77,109,.5)') + '">' +

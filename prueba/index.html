@@ -4,330 +4,366 @@
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Verificador de identidad</title>
+<title>Verificación</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0b1020; --card:#141b30; --line:#2a3350; --txt:#fff; --mute:#9aa3b8; --ok:#22c55e; --warn:#f59e0b; --bad:#ff4d6d; --acc:#3b6cff; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--txt); font-family:system-ui,-apple-system,sans-serif; }
-  .wrap { max-width:520px; margin:0 auto; padding:20px 16px 48px; }
-  h1 { font-size:22px; margin:8px 0 14px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:14px; }
-  .card h2 { font-size:17px; margin:0 0 8px; }
-  p, li { color:var(--mute); line-height:1.5; font-size:15px; }
-  ul { padding-left:20px; margin:6px 0; }
-  label { display:block; font-weight:600; margin:12px 0 6px; }
-  input, select { width:100%; padding:12px; border-radius:10px; border:1px solid var(--line); background:#0f1528; color:#fff; font-size:16px; }
-  .fila { display:flex; gap:8px; }
-  .btn { display:block; width:100%; padding:14px; border:0; border-radius:12px; background:var(--acc); color:#fff; font-size:16px; font-weight:600; margin-top:12px; }
-  .btn.sec { background:#2a3350; }
-  .btn:disabled { opacity:.5; }
-  .barra { display:flex; gap:6px; margin-bottom:14px; }
-  .barra i { flex:1; height:4px; border-radius:4px; background:#2a3350; }
-  .barra i.on { background:var(--acc); }
-  .chk { display:flex; gap:10px; padding:6px 0; }
-  .chk b { width:18px; }
-  .ok { color:var(--ok); } .warn { color:var(--warn); } .bad { color:var(--bad); }
-  img.prev { width:100%; border-radius:12px; margin-top:10px; }
-  .fotos { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .fotos img { width:100%; border-radius:10px; }
-  .regula { position:fixed; inset:0; z-index:50; background:#000; }
-  .oculto { display:none !important; }
-  .aviso { background:#3a2a10; border:1px solid #6b4b16; color:#f8d48a; border-radius:12px; padding:12px; font-size:14px; }
+  :root{
+    --bg:#09090b; --bg-2:#0e0e12; --ink:#f4f0e7; --mute:#9d968a; --faint:#6c665c;
+    --gold:#c9a96a; --gold-2:#e2cc96; --gold-dim:rgba(201,169,106,.16); --gold-line:rgba(201,169,106,.22);
+    --ok:#74b08c; --bad:#c67e80; --warn:#c9a96a;
+    --line:rgba(244,240,231,.09); --surface:rgba(244,240,231,.025);
+    --serif:"Fraunces",Georgia,serif; --sans:"Inter",system-ui,-apple-system,sans-serif;
+    --r:18px; --ease:cubic-bezier(.16,1,.3,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;font-weight:400}
+  body{
+    min-height:100dvh;
+    background:
+      radial-gradient(120% 70% at 50% -10%, rgba(201,169,106,.10), transparent 60%),
+      radial-gradient(90% 60% at 50% 110%, rgba(201,169,106,.04), transparent 55%),
+      var(--bg);
+    position:relative;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.4'/%3E%3C/svg%3E");
+  }
+  ::selection{background:rgba(201,169,106,.3);color:#fff}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:rgba(201,169,106,.22);border-radius:9px}
+  ::-webkit-scrollbar-track{background:transparent}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:8px}
+
+  .wrap{position:relative;z-index:1;max-width:440px;margin:0 auto;padding:34px 22px 60px;caret-color:var(--gold)}
+
+  .brand{display:flex;flex-direction:column;align-items:center;gap:13px;margin-bottom:30px;text-align:center}
+  .crest{width:46px;height:46px;color:var(--gold);filter:drop-shadow(0 4px 14px rgba(201,169,106,.3))}
+  .brand .kick{font-family:var(--sans);font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold);font-weight:500}
+  .brand h1{font-family:var(--serif);font-weight:500;font-size:30px;line-height:1.05;margin:0;letter-spacing:-.01em}
+  .brand .rule{width:34px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-top:4px}
+
+  .screen{animation:rise .7s var(--ease) both}
+  @keyframes rise{from{opacity:0;transform:translateY(14px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:22px;margin-bottom:14px;backdrop-filter:blur(2px)}
+  .panel h2{font-family:var(--serif);font-weight:500;font-size:20px;margin:0 0 6px;letter-spacing:-.01em}
+  .lede{color:var(--mute);font-size:14.5px;line-height:1.6;margin:0}
+  .lede.tight{margin-bottom:0}
+
+  label.field{display:block;margin-top:16px}
+  label.field .lab{display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:500;margin-bottom:8px}
+  label.field .lab svg{width:14px;height:14px;color:var(--gold)}
+  .control{position:relative}
+  .control svg.chev{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--gold);pointer-events:none}
+  select,input[type=date],input[type=password]{
+    width:100%;appearance:none;-webkit-appearance:none;background:#0b0b0e;border:1px solid var(--line);
+    color:var(--ink);font-family:var(--sans);font-size:16px;padding:14px 15px;border-radius:12px;transition:border-color .25s,box-shadow .25s
+  }
+  select{padding-right:40px}
+  input[type=date]{color-scheme:dark}
+  select:focus,input:focus{border-color:var(--gold-line);box-shadow:0 0 0 3px rgba(201,169,106,.1);outline:none}
+  select.ph{color:var(--faint)}
+
+  .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px 18px;border:0;border-radius:13px;
+    font-family:var(--sans);font-size:15.5px;font-weight:600;letter-spacing:.01em;cursor:pointer;transition:transform .2s var(--ease),box-shadow .3s,filter .3s;margin-top:18px}
+  .btn svg{width:18px;height:18px}
+  .btn-gold{background:linear-gradient(180deg,var(--gold-2),var(--gold));color:#2a2113;box-shadow:0 12px 26px -14px rgba(0,0,0,.78),0 2px 5px -2px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.45)}
+  .btn-gold:hover{transform:translateY(-1px);box-shadow:0 18px 34px -16px rgba(0,0,0,.82),0 3px 7px -3px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.55)}
+  .btn-gold:active{transform:translateY(0)}
+  .btn-gold:disabled{filter:grayscale(.6) brightness(.7);box-shadow:none;cursor:not-allowed;transform:none}
+  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--gold-line)}
+  .btn-ghost:hover{background:rgba(201,169,106,.07)}
+  .btn-plain{background:transparent;color:var(--mute);border:1px solid var(--line);font-weight:500}
+  .btn-plain:hover{color:var(--ink);border-color:var(--gold-line)}
+  a.btn{text-decoration:none}
+
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .seg button{display:flex;flex-direction:column;align-items:center;gap:9px;padding:18px 10px;border-radius:14px;border:1px solid var(--line);
+    background:#0b0b0e;color:var(--mute);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;transition:.25s var(--ease)}
+  .seg button svg{width:26px;height:26px;color:var(--faint);transition:.25s}
+  .seg button[aria-pressed=true]{border-color:var(--gold-line);background:rgba(201,169,106,.09);color:var(--ink)}
+  .seg button[aria-pressed=true] svg{color:var(--gold)}
+
+  .req{display:flex;align-items:flex-start;gap:13px;padding:14px 0;border-top:1px solid var(--line)}
+  .req:first-child{border-top:0}
+  .req .dot{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--gold-line);background:rgba(201,169,106,.08);color:var(--gold)}
+  .req .dot svg{width:15px;height:15px}
+  .req .tt{font-size:14.5px;font-weight:500;color:var(--ink)}
+  .req .ds{font-size:12.5px;color:var(--mute);margin-top:2px;line-height:1.45}
+
+  .row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:11px 0;border-top:1px solid var(--line)}
+  .row:first-child{border-top:0}
+  .row .k{color:var(--faint);font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+  .row .v{font-size:15px;font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
+
+  .chk{display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+  .chk:first-child{border-top:0}
+  .chk .mk{flex:0 0 auto;width:22px;height:22px;border-radius:50%;display:grid;place-items:center}
+  .chk .mk svg{width:13px;height:13px}
+  .mk.ok{background:rgba(116,176,140,.14);color:var(--ok)} .mk.bad{background:rgba(198,126,128,.14);color:var(--bad)} .mk.warn{background:rgba(201,169,106,.14);color:var(--warn)}
+  .chk .ct{font-size:14.5px;font-weight:450;color:var(--ink)}
+  .chk .cd{font-size:12.5px;color:var(--mute);margin-top:2px}
+
+  .verdict{display:flex;align-items:center;gap:20px;padding:26px 24px;border-radius:var(--r);margin-bottom:14px;position:relative;overflow:hidden;border:1px solid}
+  .verdict.yes{border-color:rgba(116,176,140,.4);background:linear-gradient(135deg,rgba(116,176,140,.12),transparent 70%)}
+  .verdict.no{border-color:rgba(198,126,128,.4);background:linear-gradient(135deg,rgba(198,126,128,.12),transparent 70%)}
+  .verdict .word{font-family:var(--serif);font-weight:600;font-size:40px;line-height:1;letter-spacing:-.02em}
+  .verdict.yes .word{color:var(--ok)} .verdict.no .word{color:var(--bad)}
+  .verdict .pct{font-family:var(--serif);font-weight:500;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+  .verdict .cap{color:var(--mute);font-size:12.5px;margin-top:5px;max-width:20ch;line-height:1.4}
+  .verdict .bar{position:absolute;left:0;bottom:0;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--gold-2),var(--gold))}
+
+  .notice{display:flex;gap:12px;align-items:flex-start;background:rgba(201,169,106,.06);border:1px solid var(--gold-line);border-radius:14px;padding:14px 15px;margin-bottom:14px;font-size:13.5px;line-height:1.55;color:var(--gold-2)}
+  .notice svg{flex:0 0 auto;width:17px;height:17px;color:var(--gold);margin-top:1px}
+  .notice a{color:#fff;text-decoration:underline;text-underline-offset:2px}
+  .foot{text-align:center;color:var(--faint);font-size:11.5px;letter-spacing:.04em;margin-top:22px;line-height:1.6}
+  .back{display:inline-flex;align-items:center;gap:7px;color:var(--mute);font-size:13px;background:none;border:0;cursor:pointer;padding:6px 0;margin-bottom:4px}
+  .back:hover{color:var(--gold)}
+  .back svg{width:15px;height:15px}
+  .oculto{display:none!important}
+
+  #acceso{position:fixed;inset:0;z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px;
+    background:radial-gradient(120% 70% at 50% 10%,rgba(201,169,106,.12),transparent 60%),var(--bg)}
+  #acceso .crest{width:54px;height:54px;margin-bottom:4px}
+  #acceso .t{font-family:var(--serif);font-weight:500;font-size:26px}
+  #acceso .s{color:var(--mute);font-size:14px;margin-top:-6px}
+  #acceso input{width:240px;text-align:center;font-size:24px;letter-spacing:.5em;padding:15px 12px;font-family:var(--serif)}
+  #acceso .btn{width:240px}
+  #accesoError{min-height:18px;color:var(--bad);font-size:13px}
+  .regula{position:fixed;inset:0;z-index:50;background:#000}
 </style>
 <script src="regula-config.js"></script>
 <script src="paises.js"></script>
 </head>
 <body>
 
-<!-- Código de entrada -->
-<div id="acceso" style="position:fixed;inset:0;z-index:99;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px">
-  <div style="font-size:22px;font-weight:700">Acceso privado</div>
-  <div style="color:var(--mute)">Escribe el código para entrar.</div>
-  <input id="accesoCodigo" type="password" inputmode="numeric" autocomplete="off" placeholder="Código" style="width:220px;text-align:center;font-size:22px;letter-spacing:6px">
-  <div id="accesoError" class="bad" style="min-height:20px"></div>
-  <button id="accesoBtn" class="btn" style="width:220px">Entrar</button>
+<div id="acceso">
+  <svg class="crest" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l7.5 3.2v5.1c0 4.9-3.2 8.2-7.5 9.7-4.3-1.5-7.5-4.8-7.5-9.7V5.7z"/><path d="M8.7 12.2l2.2 2.2 4.4-4.6"/></svg>
+  <div class="t">Acceso privado</div>
+  <div class="s">Introduce tu código para continuar</div>
+  <input id="accesoCodigo" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••">
+  <div id="accesoError"></div>
+  <button id="accesoBtn" class="btn btn-gold">Entrar</button>
 </div>
 
 <div class="wrap">
-  <h1>Verificación de identidad</h1>
-  <div id="barra" class="barra oculto"></div>
+  <div class="brand">
+    <svg class="crest" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l7.5 3.2v5.1c0 4.9-3.2 8.2-7.5 9.7-4.3-1.5-7.5-4.8-7.5-9.7V5.7z"/><path d="M8.7 12.2l2.2 2.2 4.4-4.6"/></svg>
+    <div class="kick">Identidad verificada</div>
+    <h1>Verificación</h1>
+    <div class="rule"></div>
+  </div>
   <div id="pantalla"></div>
+  <div class="foot">Ninguna imagen se guarda · solo el resultado</div>
 </div>
 
 <div id="capaRegula" class="regula oculto"></div>
 
 <script>
-// Mismo proceso que la validación de Kinky.nl (que usa Regula Forensics):
-// datos → selfie con fecha → cuerpo entero → prueba de vida (Regula) → documento (Regula) → permiso de trabajo.
 (function(){
-  var CODIGO = '182844';
-  var g = document.getElementById('acceso');
+  var CODIGO='182844';
+  var g=document.getElementById('acceso');
   function entrar(){
-    if (document.getElementById('accesoCodigo').value.trim() !== CODIGO) { document.getElementById('accesoError').textContent = 'Código incorrecto'; return; }
-    try { localStorage.setItem('acceso_ok', CODIGO); } catch(e){}
-    g.remove();
+    if(document.getElementById('accesoCodigo').value.trim()!==CODIGO){document.getElementById('accesoError').textContent='Código incorrecto';return;}
+    try{localStorage.setItem('acceso_ok',CODIGO);}catch(e){}
+    g.remove();validacion();
   }
-  try { if (localStorage.getItem('acceso_ok') === CODIGO) { g.remove(); return; } } catch(e){}
-  document.getElementById('accesoBtn').onclick = entrar;
-  document.getElementById('accesoCodigo').onkeydown = function(e){ if (e.key === 'Enter') entrar(); };
+  var ok=false;try{ok=localStorage.getItem('acceso_ok')===CODIGO;}catch(e){}
+  window._accesoOk=ok;
+  if(ok){g.remove();return;}
+  document.getElementById('accesoBtn').onclick=entrar;
+  document.getElementById('accesoCodigo').onkeydown=function(e){if(e.key==='Enter')entrar();};
 })();
 
-var CFG = window.REGULA_CONFIG || {};
-var EDAD_MINIMA = 21;
-var MAX_INTENTOS = 3, ESPERA_MIN = 15;     // como Kinky: intentos limitados y bloqueo temporal
-var SIMILITUD_MINIMA = 0.75;               // cara del documento ↔ prueba de vida
-var LIBRE = ['AUT','BEL','BGR','HRV','CYP','CZE','DNK','EST','FIN','FRA','DEU','GRC','HUN','IRL','ITA','LVA','LTU','LUX','MLT','NLD','POL','PRT','ROU','SVK','SVN','ESP','SWE','ISL','LIE','NOR','CHE'];
+var CFG=window.REGULA_CONFIG||{};
+var EDAD_MINIMA=21;
+// Espacio Económico Europeo + Suiza: no necesitan permiso de trabajo (igual que Kinky).
+var EEE={AUT:1,BEL:1,BGR:1,HRV:1,CYP:1,CZE:1,DNK:1,EST:1,FIN:1,FRA:1,DEU:1,GRC:1,HUN:1,IRL:1,ITA:1,LVA:1,LTU:1,LUX:1,MLT:1,NLD:1,POL:1,PRT:1,ROU:1,SVK:1,SVN:1,ESP:1,SWE:1,ISL:1,LIE:1,NOR:1,CHE:1};
+var E={tipo:'dni',nacionalidad:'',fnac:''};
 
-var E = { paso:'datos', nac:'', fnac:null, fotos:{}, vida:null, doc:null, permiso:[] };
+var ic={
+  shield:'<path d="M12 2.5l7.5 3.2v5.1c0 4.9-3.2 8.2-7.5 9.7-4.3-1.5-7.5-4.8-7.5-9.7V5.7z"/><path d="M8.7 12.2l2.2 2.2 4.4-4.6"/>',
+  globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.4 2.5 15.6 0 18M12 3c-2.5 2.4-2.5 15.6 0 18"/>',
+  cal:'<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/>',
+  id:'<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="11" r="2.1"/><path d="M13 10.2h5M13 13.2h5M5.6 15.6c.6-1.4 5-1.4 5.8 0"/>',
+  passport:'<rect x="5" y="3" width="14" height="18" rx="2.2"/><circle cx="12" cy="10" r="2.6"/><path d="M8.6 16.2h6.8"/>',
+  camera:'<path d="M4 8.5h2.6L8 6.5h8l1.4 2H20v10H4z"/><circle cx="12" cy="13" r="3.1"/>',
+  check:'<path d="M5 12.5l4 4 10-10"/>',
+  cross:'<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+  bang:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16h.01"/>',
+  arrow:'<path d="M14 6l-6 6 6 6"/>',
+  arrowR:'<path d="M10 6l6 6-6 6"/>',
+  chev:'<path d="M6 9l6 6 6-6"/>',
+  face:'<circle cx="12" cy="12" r="9"/><path d="M8.5 14c1 1.4 6 1.4 7 0M9 9.5h.01M15 9.5h.01"/>',
+  doc:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 15.5h6"/>',
+  work:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7"/>'
+};
+function svg(name,cls){return '<svg '+(cls?'class="'+cls+'" ':'')+'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+ic[name]+'</svg>';}
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function nombrePais(c){var p=(window.PAISES||[]).find(function(x){return x[0]===c;});return p?p[1]:c;}
+function hayLicencia(){return !!(CFG.license||CFG.documentServiceUrl);}
+function edadDe(f){var h=new Date(),e=h.getFullYear()-f.getFullYear();if(h.getMonth()<f.getMonth()||(h.getMonth()===f.getMonth()&&h.getDate()<f.getDate()))e--;return e;}
+function fechaRegula(v){if(!v)return null;var m=v.match(/(\d{4})-(\d{2})-(\d{2})/)||v.match(/(\d{2})[./](\d{2})[./](\d{4})/);if(!m)return null;return m[1].length===4?new Date(+m[1],+m[2]-1,+m[3]):new Date(+m[3],+m[2]-1,+m[1]);}
+function pintar(html){$('pantalla').innerHTML='<div class="screen">'+html+'</div>';window.scrollTo(0,0);}
 
-function $(id){ return document.getElementById(id); }
-function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-function nombrePais(c){ var p = (window.PAISES||[]).find(function(x){ return x[0] === c; }); return p ? p[1] : c; }
-function pidePermiso(){ return E.nac && LIBRE.indexOf(E.nac) < 0; }
-function edadDe(f){ var h = new Date(), e = h.getFullYear() - f.getFullYear(); if (h.getMonth() < f.getMonth() || (h.getMonth() === f.getMonth() && h.getDate() < f.getDate())) e--; return e; }
-function hayLicencia(){ return !!(CFG.license || CFG.documentServiceUrl) && !!CFG.faceServiceUrl; }
-
-// ---- intentos (Kinky: «quedan N intentos» / «demasiados intentos, vuelve en X») ----
-function leerIntentos(){ try { return JSON.parse(localStorage.getItem('intentos') || '{"n":0,"hasta":0}'); } catch(e){ return {n:0,hasta:0}; } }
-function guardarIntentos(x){ try { localStorage.setItem('intentos', JSON.stringify(x)); } catch(e){} }
-function bloqueado(){ var x = leerIntentos(); return x.hasta > Date.now() ? Math.ceil((x.hasta - Date.now()) / 60000) : 0; }
-function fallo(){ var x = leerIntentos(); x.n++; if (x.n >= MAX_INTENTOS) { x = { n:0, hasta: Date.now() + ESPERA_MIN * 60000 }; } guardarIntentos(x); return MAX_INTENTOS - x.n; }
-
-var PASOS = function(){ return ['selfie','cuerpo','vida','documento'].concat(pidePermiso() ? ['permiso1','permiso2'] : []); };
-function barra(){
-  var b = $('barra'), lista = PASOS(), i = lista.indexOf(E.paso);
-  if (i < 0) { b.classList.add('oculto'); return; }
-  b.classList.remove('oculto');
-  b.innerHTML = lista.map(function(_, k){ return '<i class="' + (k <= i ? 'on' : '') + '"></i>'; }).join('');
-}
-
-function pintar(html){ $('pantalla').innerHTML = html; barra(); window.scrollTo(0,0); }
-
-// ---- Foto con la cámara (como Kinky: input accept=image/* capture) ----
-function botonFoto(id, texto, camara){
-  return '<input id="in_' + id + '" type="file" accept="image/*" capture="' + camara + '" class="oculto">' +
-    '<button class="btn" onclick="document.getElementById(\'in_' + id + '\').click()">' + texto + '</button>';
-}
-function alElegir(id, siguiente){
-  var inp = $('in_' + id);
-  inp.onchange = function(){
-    var f = inp.files && inp.files[0]; if (!f) return;
-    var r = new FileReader();
-    r.onload = function(){ E.fotos[id] = r.result; siguiente(); };
-    r.readAsDataURL(f);
-  };
-}
-
-// ---- Pantallas ----
-function pDatos(){
-  var min = bloqueado();
-  if (min) return pintar('<div class="card"><h2 class="bad">Demasiados intentos</h2><p>Vuelve a intentarlo dentro de ' + min + ' minutos.</p></div>');
-  E.paso = 'datos';
-  var opciones = (window.PAISES||[]).map(function(p){ return '<option value="' + p[0] + '"' + (E.nac === p[0] ? ' selected' : '') + '>' + esc(p[1]) + '</option>'; }).join('');
+// 1 — Proceso de validación (igual que Kinky: nacionalidad + fecha de nacimiento)
+function validacion(){
+  var opts='<option value="" '+(E.nacionalidad?'':'selected')+' disabled>Selecciona tu nacionalidad</option>'+
+    (window.PAISES||[]).map(function(p){return '<option value="'+p[0]+'"'+(E.nacionalidad===p[0]?' selected':'')+'>'+esc(p[1])+'</option>';}).join('');
   pintar(
-    (hayLicencia() ? '' : '<div class="aviso">Falta la licencia de Regula: la prueba de vida y la lectura del documento no funcionarán hasta configurarla. ' +
-      'Mientras tanto puedes usar el <a href="manual.html" style="color:#fff">verificador manual</a>.</div><br>') +
-    '<div class="card"><h2>Tu proceso de validación</h2>' +
-    '<p>Empezamos con la nacionalidad y la fecha de nacimiento. Con eso sabemos qué controles hacen falta: identidad, documento y, si es de fuera de la UE, el EEE o Suiza, el permiso de trabajo.</p>' +
-    '<label>Nacionalidad</label><select id="nac"><option value="">Selecciona la nacionalidad</option>' + opciones + '</select>' +
-    '<label>Fecha de nacimiento</label><div class="fila">' +
-    '<input id="dd" inputmode="numeric" maxlength="2" placeholder="DD"><input id="mm" inputmode="numeric" maxlength="2" placeholder="MM"><input id="aa" inputmode="numeric" maxlength="4" placeholder="AAAA"></div>' +
-    '<div id="err" class="bad" style="min-height:22px;margin-top:8px"></div>' +
-    '<button class="btn" id="seguir">Enviar</button></div>');
-  $('seguir').onclick = function(){
-    var nac = $('nac').value, d = +$('dd').value, m = +$('mm').value, a = +$('aa').value;
-    var f = new Date(a, m - 1, d);
-    if (!nac) return $('err').textContent = 'Selecciona la nacionalidad';
-    if (!a || f.getDate() !== d || f.getMonth() !== m - 1 || f > new Date()) return $('err').textContent = 'La fecha de nacimiento no es válida';
-    if (edadDe(f) < EDAD_MINIMA) return $('err').textContent = 'Hay que tener ' + EDAD_MINIMA + ' años o más.';
-    E.nac = nac; E.fnac = f;
-    pSelfie();
+    '<div class="panel">'+
+      '<h2>Tu proceso de validación</h2>'+
+      '<p class="lede">Empezamos por tu nacionalidad y tu fecha de nacimiento. Con eso decidimos qué controles necesitas: identidad, documento y, si procede, permiso de trabajo.</p>'+
+      '<label class="field"><span class="lab">'+svg('globe')+'Nacionalidad</span>'+
+        '<span class="control"><select id="nac" class="'+(E.nacionalidad?'':'ph')+'">'+opts+'</select>'+svg('chev','chev')+'</span></label>'+
+      '<label class="field"><span class="lab">'+svg('cal')+'Fecha de nacimiento</span>'+
+        '<span class="control"><input type="date" id="fnac" value="'+esc(E.fnac)+'" max="'+new Date().toISOString().slice(0,10)+'"></span></label>'+
+      '<button class="btn btn-gold" id="seguir">Continuar'+svg('arrowR')+'</button>'+
+    '</div>');
+  $('nac').onchange=function(){this.classList.remove('ph');};
+  $('seguir').onclick=function(){
+    E.nacionalidad=$('nac').value; E.fnac=$('fnac').value;
+    if(!E.nacionalidad||!E.fnac){ (!E.nacionalidad?$('nac'):$('fnac')).focus(); return; }
+    controles();
   };
 }
 
-function pSelfie(){
-  E.paso = 'selfie';
-  pintar('<div class="card"><h2>Fecha + foto de cara</h2>' +
-    '<p>Una foto clara de la persona para comprobar que está ahora en Países Bajos o Bélgica, con un periódico o un ticket de allí.</p>' +
-    '<ul><li>La cara tiene que verse claramente.</li><li>Tiene que verse un <b>periódico</b> o un <b>ticket</b> neerlandés o belga.</li>' +
-    '<li>No puede tener más de <b>7 días</b>.</li><li>La <b>fecha</b> tiene que leerse.</li></ul>' +
-    botonFoto('selfie', '🤳 Hacer el selfie', 'user') + '</div>');
-  alElegir('selfie', pCuerpo);
+// 2 — Controles necesarios según nacionalidad y edad
+function controles(){
+  var fn=fechaRegula(E.fnac), edad=fn?edadDe(fn):null, eee=!!EEE[E.nacionalidad];
+  var items=[
+    {ic:'face',t:'Control de identidad',d:'Confirmamos que eres tú y que el documento es tuyo.'},
+    {ic:'doc', t:'Verificación del documento',d:'Lectura del DNI o pasaporte con la tecnología de Kinky (Regula).'}
+  ];
+  if(!eee) items.push({ic:'work',t:'Control del permiso de trabajo',d:'Tu nacionalidad está fuera del Espacio Económico Europeo.'});
+  var menor = edad!=null && edad<EDAD_MINIMA;
+  pintar(
+    '<button class="back" onclick="validacion()">'+svg('arrow')+'Cambiar datos</button>'+
+    '<div class="panel">'+
+      '<h2>Controles que necesitas</h2>'+
+      '<div class="row"><span class="k">Nacionalidad</span><span class="v">'+esc(nombrePais(E.nacionalidad))+'</span></div>'+
+      '<div class="row"><span class="k">Nacimiento</span><span class="v">'+(fn?esc(fn.toLocaleDateString('es'))+'  ·  '+edad+' años':esc(E.fnac))+'</span></div>'+
+    '</div>'+
+    (menor?'<div class="notice">'+svg('bang')+'<div>Para verificarte debes tener <b>'+EDAD_MINIMA+' años o más</b>. Con la fecha indicada no se cumple.</div></div>':'')+
+    '<div class="panel">'+
+      items.map(function(i){return '<div class="req"><span class="dot">'+svg(i.ic)+'</span><div><div class="tt">'+i.t+'</div><div class="ds">'+i.d+'</div></div></div>';}).join('')+
+    '</div>'+
+    '<button class="btn '+(menor?'btn-plain':'btn-gold')+'" onclick="documento()">Empezar la verificación'+svg('arrowR')+'</button>');
 }
 
-function pCuerpo(){
-  E.paso = 'cuerpo';
-  pintar('<div class="card"><h2>Foto de cuerpo entero</h2>' +
-    '<p>Una foto clara en la que se vea todo el cuerpo. No puede estar editada.</p>' +
-    botonFoto('cuerpo', '📷 Hacer la foto de cuerpo entero', 'environment') +
-    '<img class="prev" src="' + E.fotos.selfie + '"></div>');
-  alElegir('cuerpo', pVida);
-}
-
-// ---- Prueba de vida con Regula Face (mismos ajustes que Kinky) ----
-function pVida(){
-  E.paso = 'vida';
-  pintar('<div class="card"><h2>Prueba de vida</h2>' +
-    '<p>La cámara comprueba que hay una persona real delante: no vale una foto, una pantalla ni una máscara. Sigue las indicaciones en pantalla.</p>' +
-    '<button class="btn" id="empezarVida"' + (hayLicencia() ? '' : ' disabled') + '>Empezar</button>' +
-    (hayLicencia() ? '' : '<p class="warn">Necesita la licencia de Regula.</p>') + '</div>');
-  $('empezarVida').onclick = abrirVida;
-}
-
-function abrirVida(){
-  if (!hayLicencia()) return;
-  var capa = $('capaRegula');
-  capa.innerHTML = '<face-liveness></face-liveness>';
-  capa.classList.remove('oculto');
-  var el = capa.querySelector('face-liveness');
-  el.settings = {
-    locale: 'es', copyright: false, startScreen: false, closeDisabled: true,
-    url: CFG.faceServiceUrl, recordingProcess: 1, retryCount: 16, tag: 'verif-' + Date.now(),
-  };
-  el.addEventListener('face-liveness', function(ev){
-    var d = ev.detail; if (!d || !d.data) return;
-    var r = d.data.response;
-    if (d.action === 'PROCESS_FINISHED' && r) {
-      capa.classList.add('oculto'); capa.innerHTML = '';
-      E.vida = r;
-      if (r.status !== 0) { var q = fallo(); return pError('La prueba de vida no se ha confirmado.', q); }
-      pDocumento();
-    }
-    if (d.action === 'CLOSE') { capa.classList.add('oculto'); capa.innerHTML = ''; }
+// 3 — Lectura del documento (Regula, con alternativa gratuita)
+function documento(){
+  pintar(
+    '<button class="back" onclick="controles()">'+svg('arrow')+'Atrás</button>'+
+    (hayLicencia()?'':'<div class="notice">'+svg('bang')+'<div>Falta la licencia de Regula (la tecnología de Kinky). Mientras llega, usa el <a href="manual.html">lector gratuito</a> o pide la prueba en regulaforensics.com.</div></div>')+
+    '<div class="panel">'+
+      '<h2>Lee tu documento</h2>'+
+      '<p class="lede tight">Escanea con la cámara. Comprobamos las líneas «&lt;», sus dígitos de control, la edad y la caducidad, y que coincide con tus datos.</p>'+
+      '<div class="seg">'+
+        '<button type="button" data-tipo="dni" aria-pressed="'+(E.tipo==='dni')+'">'+svg('id')+'DNI / ID</button>'+
+        '<button type="button" data-tipo="pasaporte" aria-pressed="'+(E.tipo==='pasaporte')+'">'+svg('passport')+'Pasaporte</button>'+
+      '</div>'+
+      '<button class="btn btn-gold" id="escanear"'+(hayLicencia()?'':' disabled')+'>'+svg('camera')+'Escanear el documento</button>'+
+      (hayLicencia()?'':'<a class="btn btn-ghost" href="manual.html">'+svg('camera')+'Usar el lector gratuito</a>')+
+    '</div>');
+  Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(b){
+    b.onclick=function(){E.tipo=b.getAttribute('data-tipo');Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(x){x.setAttribute('aria-pressed',x===b);});};
   });
+  if(hayLicencia())$('escanear').onclick=escanear;
 }
 
-// ---- Documento con Regula Document Reader (mismos ajustes que Kinky) ----
-function pDocumento(){
-  E.paso = 'documento';
-  pintar('<div class="card"><h2>Documento de identidad</h2>' +
-    '<p>Pasaporte, documento de identidad o permiso de residencia holandés. Se escanea con la cámara: tienen que verse la foto, la fecha de nacimiento, la caducidad y la nacionalidad, sin reflejos y con el documento entero en pantalla.</p>' +
-    '<button class="btn" id="empezarDoc"' + (hayLicencia() ? '' : ' disabled') + '>Escanear el documento</button>' +
-    (hayLicencia() ? '' : '<p class="warn">Necesita la licencia de Regula.</p>') + '</div>');
-  $('empezarDoc').onclick = abrirDocumento;
-}
-
-var docListo = null;
+var docListo=null;
 function prepararDocumento(){
-  if (docListo) return docListo;
-  // igual que Kinky: el servicio se crea a mano antes de registrar los componentes
-  window.RegulaDocumentSDK = window.RegulaDocumentSDK || new window.Regula.DocumentReaderService();
-  docListo = window.Regula.defineComponents().then(function(){
-    var sdk = window.RegulaDocumentSDK;
-    var param = { scenario: 'MrzAndLocate', minimalHolderAge: EDAD_MINIMA };
-    if (CFG.documentServiceUrl) param.backendProcessing = { serviceURL: CFG.documentServiceUrl };
-    return sdk.initialize(CFG.license ? { license: CFG.license } : undefined).then(function(){
-      sdk.recognizerProcessParam = { processParam: param };
-      sdk.imageProcessParam = { processParam: param };
+  if(docListo)return docListo;
+  window.RegulaDocumentSDK=window.RegulaDocumentSDK||new window.Regula.DocumentReaderService();
+  docListo=window.Regula.defineComponents().then(function(){
+    var sdk=window.RegulaDocumentSDK;
+    var param={scenario:'MrzAndLocate',minimalHolderAge:EDAD_MINIMA};
+    if(CFG.documentServiceUrl)param.backendProcessing={serviceURL:CFG.documentServiceUrl};
+    return sdk.initialize(CFG.license?{license:CFG.license}:undefined).then(function(){
+      sdk.recognizerProcessParam={processParam:param};
+      sdk.imageProcessParam={processParam:param};
     });
   });
   return docListo;
 }
 
-function abrirDocumento(){
-  if (!hayLicencia()) return;
+function escanear(){
+  if(!hayLicencia())return;
+  pintar('<div class="panel"><h2>Abriendo la cámara…</h2><p class="lede tight">Encaja el documento dentro del marco, sin reflejos ni sombras.</p></div>');
   prepararDocumento().then(function(){
-    var capa = $('capaRegula');
-    capa.innerHTML = '<document-reader></document-reader>';
+    var capa=$('capaRegula');
+    capa.innerHTML='<document-reader></document-reader>';
     capa.classList.remove('oculto');
-    var el = capa.querySelector('document-reader');
-    el.settings = {
-      locale: 'es', copyright: false, startScreen: false, closeButton: false, captureButton: false,
-      skipButton: false, uploadFileButton: false, multipageProcessing: true, videoRecord: false,
-      newLayout: true, cameraFrameBorderWidth: 2,
-    };
-    el.addEventListener('document-reader', function(ev){
-      var d = ev.detail; if (!d) return;
-      if (d.action === 'PROCESS_FINISHED') {
-        capa.classList.add('oculto'); capa.innerHTML = '';
-        if (!d.data || d.data.status !== 1 || !d.data.response) { var q = fallo(); return pError('No se ha podido leer el documento. Limpia la cámara, evita reflejos y que se vea entero.', q); }
-        E.doc = d.data.response;
-        if (pidePermiso()) pPermiso(1); else pResultado();
+    var el=capa.querySelector('document-reader');
+    el.settings={locale:'es',copyright:false,startScreen:false,closeButton:true,captureButton:false,skipButton:false,uploadFileButton:false,multipageProcessing:true,videoRecord:false,newLayout:true,cameraFrameBorderWidth:2};
+    el.addEventListener('document-reader',function(ev){
+      var d=ev.detail;if(!d)return;
+      if(d.action==='PROCESS_FINISHED'){
+        capa.classList.add('oculto');capa.innerHTML='';
+        if(!d.data||d.data.status!==1||!d.data.response)return pError('No se ha podido leer el documento. Limpia la cámara, evita reflejos y que se vea entero.');
+        resultado(d.data.response);
       }
+      if(d.action==='CLOSE'){capa.classList.add('oculto');capa.innerHTML='';documento();}
     });
-  }).catch(function(e){ pError('No se pudo iniciar Regula: ' + (e && e.message || e), null); });
+  }).catch(function(e){pError('No se pudo iniciar Regula: '+(e&&e.message||e));});
 }
 
-function pPermiso(lado){
-  E.paso = 'permiso' + lado;
-  pintar('<div class="card"><h2>Permiso de trabajo · ' + (lado === 1 ? 'parte de delante' : 'parte de detrás') + '</h2>' +
-    (lado === 1
-      ? '<p>Foto de la parte de delante donde se vean: foto, fecha de nacimiento, nacionalidad y caducidad. Documento entero en pantalla.</p>'
-      : '<p>Foto de la parte de detrás donde se vean: observaciones y fecha de inicio del derecho de residencia.</p>') +
-    botonFoto('permiso' + lado, '📷 Hacer la foto', 'environment') + '</div>');
-  alElegir('permiso' + lado, function(){ if (lado === 1) pPermiso(2); else pResultado(); });
+function pError(msg){
+  pintar('<div class="panel"><h2 style="color:var(--bad)">Comprueba el documento</h2><p class="lede">'+esc(msg)+'</p><button class="btn btn-gold" onclick="documento()">Volver a intentarlo</button></div>');
 }
 
-function pError(msg, quedan){
-  pintar('<div class="card"><h2 class="bad">Comprueba el documento</h2><p>' + esc(msg) + '</p>' +
-    (quedan != null ? (quedan > 0 ? '<p class="warn">Quedan ' + quedan + ' intentos.</p>' : '<p class="bad">Demasiados intentos. Vuelve dentro de ' + ESPERA_MIN + ' minutos.</p>') : '') +
-    '<button class="btn" onclick="pDatos()">Volver a empezar</button></div>');
+function resultado(doc){
+  var txt=doc.text,checks=[],datos=[];
+  function add(nivel,t,d){checks.push({nivel:nivel,t:t,d:d});}
+  function val(code){return txt&&txt.getFieldValue?(txt.getFieldValue(code)||''):'';}
+  var nombre=(val(6)||((val(4)+' '+val(5)).trim()));
+  var num=val(2);
+  var fnac=fechaRegula(val(5)||val(51));
+  var fcad=fechaRegula(val(3));
+  var nac=(val(26)||val(11)||'').toUpperCase();
+  var estado=doc.status&&doc.status.overallStatus;
+
+  if(nombre)datos.push(['Nombre',nombre]);
+  if(num)datos.push(['Número',num]);
+  if(nac)datos.push(['Nacionalidad',nombrePais(nac)]);
+  if(fnac)datos.push(['Nacimiento',fnac.toLocaleDateString('es')]);
+  if(fcad)datos.push(['Caducidad',fcad.toLocaleDateString('es')]);
+
+  add(estado===1?'ok':estado===0?'bad':'warn','Dígitos de control del documento',estado===1?'Correctos':estado===0?'No cuadran':'No comprobados del todo');
+  if(fnac){var edad=edadDe(fnac);add(edad>=EDAD_MINIMA?'ok':'bad',EDAD_MINIMA+' años o más',edad+' años');}
+  else add('warn','Edad','No se pudo leer la fecha de nacimiento');
+  if(fcad)add(fcad>new Date()?'ok':'bad','Documento en vigor',fcad>new Date()?'Válido hasta '+fcad.toLocaleDateString('es'):'Caducado');
+  else add('warn','Caducidad','No se pudo leer');
+
+  // Mejora sobre Kinky: cruzar los datos declarados con los del documento.
+  if(E.nacionalidad&&nac)add(nac===E.nacionalidad?'ok':'warn','Coincide con tu nacionalidad',nac===E.nacionalidad?'Igual a lo declarado':'Declaraste '+nombrePais(E.nacionalidad)+', el documento dice '+nombrePais(nac));
+  var fnd=fechaRegula(E.fnac);
+  if(fnd&&fnac)add(fnd.getTime()===fnac.getTime()?'ok':'warn','Coincide con tu fecha de nacimiento',fnd.getTime()===fnac.getTime()?'Igual a lo declarado':'No coincide con lo que indicaste');
+
+  var mal=checks.some(function(c){return c.nivel==='bad';});
+  var total=checks.reduce(function(t,c){return t+(c.nivel==='ok'?1:c.nivel==='warn'?0.5:0);},0);
+  var pct=Math.round(100*total/checks.length);if(mal)pct=Math.min(pct,30);
+  var si=!mal&&pct>=70;
+  pintar(
+    '<div class="verdict '+(si?'yes':'no')+'">'+
+      '<div class="word">'+(si?'SÍ':'NO')+'</div>'+
+      '<div><div class="pct">'+pct+'%</div><div class="cap">'+(si?'Documento leído y coherente con tus datos':'No se puede dar por válido')+'</div></div>'+
+      '<div class="bar" style="width:'+pct+'%"></div>'+
+    '</div>'+
+    '<div class="panel"><h2>Datos del documento</h2>'+datos.map(function(d){return '<div class="row"><span class="k">'+esc(d[0])+'</span><span class="v">'+esc(d[1])+'</span></div>';}).join('')+'</div>'+
+    '<div class="panel"><h2>Comprobaciones</h2>'+checks.map(function(c){return '<div class="chk"><span class="mk '+c.nivel+'">'+svg(c.nivel==='ok'?'check':c.nivel==='bad'?'cross':'bang')+'</span><div><div class="ct">'+esc(c.t)+'</div><div class="cd">'+esc(c.d)+'</div></div></div>';}).join('')+'</div>'+
+    '<button class="btn btn-plain" onclick="validacion()">Verificar otro documento</button>');
 }
 
-// ---- Resultado: cruces como Kinky ----
-function b64DeBuffer(buf){ var s = '', a = new Uint8Array(buf); for (var i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); }
-function fechaRegula(v){ if (!v) return null; var m = v.match(/(\d{4})-(\d{2})-(\d{2})/) || v.match(/(\d{2})[./](\d{2})[./](\d{4})/); if (!m) return null; return m[1].length === 4 ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(+m[3], +m[2] - 1, +m[1]); }
-
-function compararCaras(retrato, vivo){
-  if (!CFG.faceServiceUrl || !retrato || !vivo) return Promise.resolve(null);
-  return fetch(CFG.faceServiceUrl.replace(/\/$/, '') + '/api/match', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ images: [ { index:0, type:1, data: retrato }, { index:1, type:3, data: vivo } ] }),
-  }).then(function(r){ return r.json(); }).then(function(j){ var x = (j.results || [])[0]; return x ? x.similarity : null; }).catch(function(){ return null; });
-}
-
-function pResultado(){
-  E.paso = 'resultado';
-  pintar('<div class="card"><h2>Comprobando…</h2><p>Comparando la cara del documento con la prueba de vida.</p></div>');
-  var doc = E.doc, checks = [];
-  function add(nivel, t, d){ checks.push({ nivel:nivel, t:t, d:d }); }
-  var txt = doc.text, img = doc.images;
-  var fnac = fechaRegula(txt && txt.getFieldValue && txt.getFieldValue(5));
-  var fcad = fechaRegula(txt && txt.getFieldValue && txt.getFieldValue(3));
-  var nacDoc = txt && txt.getFieldValue && (txt.getFieldValue(26) || '').toUpperCase();
-  var estado = doc.status && doc.status.overallStatus;
-
-  add(estado === 1 ? 'ok' : estado === 0 ? 'bad' : 'warn', 'Autenticidad del documento (Regula)', estado === 1 ? 'Correcto' : estado === 0 ? 'Regula detecta un problema' : 'No comprobado del todo');
-  if (fnac) {
-    var edad = edadDe(fnac);
-    add(edad >= EDAD_MINIMA ? 'ok' : 'bad', EDAD_MINIMA + ' años o más', edad + ' años');
-    var mismaF = E.fnac && fnac.toDateString() === E.fnac.toDateString();
-    add(mismaF ? 'ok' : 'bad', 'Fecha de nacimiento declarada', mismaF ? 'Coincide con el documento' : 'No coincide con el documento');
-  } else add('warn', 'Fecha de nacimiento', 'No se pudo leer');
-  if (fcad) add(fcad > new Date() ? 'ok' : 'bad', 'Documento en vigor', fcad > new Date() ? 'Hasta ' + fcad.toLocaleDateString('es') : 'Caducado');
-  if (nacDoc) add(nacDoc === E.nac ? 'ok' : 'bad', 'Nacionalidad declarada', nacDoc === E.nac ? nombrePais(nacDoc) : 'El documento dice ' + nombrePais(nacDoc));
-  add(E.vida && E.vida.status === 0 ? 'ok' : 'bad', 'Prueba de vida (Regula)', E.vida && E.vida.status === 0 ? 'Persona real confirmada' : 'No confirmada');
-  if (pidePermiso()) add('warn', 'Permiso de trabajo', 'Revisar a mano las fotos de abajo');
-  add('warn', 'Selfie con fecha y cuerpo entero', 'Revisar a mano: periódico o ticket de 7 días o menos, foto sin editar');
-
-  var retrato = null;
-  try { var p = img && img.getField && img.getField(201); var v = p && p.getValue && p.getValue(); if (v) retrato = b64DeBuffer(v); } catch(e){}
-  var vivo = E.vida && E.vida.images && E.vida.images[0];
-  compararCaras(retrato, vivo).then(function(sim){
-    if (sim == null) add('warn', 'Misma cara que el documento', 'No se pudo comparar');
-    else add(sim >= SIMILITUD_MINIMA ? 'ok' : 'bad', 'Misma cara que el documento', Math.round(sim * 100) + ' % de parecido');
-    var mal = checks.some(function(c){ return c.nivel === 'bad'; });
-    if (mal) fallo(); else guardarIntentos({ n:0, hasta:0 });
-    // Porcentaje sí o no: cada comprobación vale 1 (correcta), 0,5 (a revisar) o 0 (mal)
-    var total = checks.reduce(function(t, c){ return t + (c.nivel === 'ok' ? 1 : c.nivel === 'warn' ? 0.5 : 0); }, 0);
-    var pct = Math.round(100 * total / checks.length); if (mal) pct = Math.min(pct, 30);
-    var si = !mal && pct >= 70;
-    var cartel = '<div class="card" style="display:flex;align-items:center;gap:14px;border-color:' + (si ? 'var(--ok)' : 'var(--bad)') + '">' +
-      '<div style="font-size:40px;font-weight:800" class="' + (si ? 'ok' : 'bad') + '">' + (si ? 'SÍ' : 'NO') + '</div>' +
-      '<div><div style="font-size:28px;font-weight:800">' + pct + ' %</div><div style="color:var(--mute);font-size:13px">' +
-      (si ? 'Identidad verificada (revisa las fotos)' : 'No se puede dar por buena') + '</div></div></div>';
-    var fotos = ['selfie','cuerpo','permiso1','permiso2'].filter(function(k){ return E.fotos[k]; })
-      .map(function(k){ return '<img src="' + E.fotos[k] + '">'; }).join('');
-    pintar(cartel + '<div class="card"><h2 class="' + (mal ? 'bad' : 'ok') + '">' + (mal ? '✕ No verificado' : '✓ Verificado (falta revisar las fotos)') + '</h2>' +
-      checks.map(function(c){ return '<div class="chk"><b class="' + c.nivel + '">' + (c.nivel === 'ok' ? '✓' : c.nivel === 'bad' ? '✕' : '!') + '</b><div>' + esc(c.t) + '<br><span style="color:var(--mute);font-size:13px">' + esc(c.d) + '</span></div></div>'; }).join('') +
-      '</div><div class="card"><h2>Fotos para revisar</h2><div class="fotos">' + fotos + '</div></div>' +
-      '<button class="btn sec" onclick="location.reload()">Nueva verificación</button>');
-  });
-}
-
-pDatos();
+if(window._accesoOk)validacion();
 </script>
-<script src="regula-face.js"></script>
 <script src="regula-document.js"></script>
 </body>
 </html>
