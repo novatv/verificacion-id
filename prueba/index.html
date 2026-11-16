@@ -138,11 +138,14 @@
   #acceso input{width:240px;text-align:center;font-size:24px;letter-spacing:.5em;padding:15px 12px;font-family:var(--serif)}
   #acceso .btn{width:240px}
   #accesoError{min-height:18px;color:var(--bad);font-size:13px}
+  [hidden]{display:none!important}
   .regula{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;z-index:50;background:#000}
   .regula document-reader{display:block;width:100%;height:100%}
 </style>
 <script src="regula-config.js"></script>
 <script src="paises.js"></script>
+<script src="camara-vida.js"></script>
+<script src="anverso.js"></script>
 </head>
 <body>
 
@@ -293,6 +296,7 @@ function controles(){
 
 // 3 — Lectura del documento (Regula, con alternativa gratuita)
 function documento(){
+  E.cara='delante';
   pintar(
     '<button class="back" onclick="controles()">'+svg('arrow')+'Atrás</button>'+
     (hayLicencia()?'':'<div class="notice">'+svg('bang')+'<div>Falta la licencia de Regula (la tecnología de Kinky). Mientras llega, usa el <a href="manual.html">lector gratuito</a> o pide la prueba en regulaforensics.com.</div></div>')+
@@ -304,13 +308,15 @@ function documento(){
         '<button type="button" data-tipo="pasaporte" aria-pressed="'+(E.tipo==='pasaporte')+'">'+svg('passport')+'Pasaporte</button>'+
       '</div>'+
       '<p class="lede tight" id="caraHint" style="margin-top:14px">'+caraTexto()+'</p>'+
-      '<button class="btn btn-gold" id="escanear"'+(hayLicencia()?'':' disabled')+'>'+svg('camera')+'Hacer foto del documento</button>'+
+      '<button class="btn btn-gold" id="escanear">'+svg('camera')+'Hacer foto del documento</button>'+
+      '<button class="btn btn-plain" id="porDetras"'+(E.tipo==='dni'&&hayLicencia()?'':' hidden')+' onclick="porDetras()">Leer la parte de atrás (líneas «&lt;&lt;&lt;»)</button>'+
       (hayLicencia()?'':'<a class="btn btn-ghost" href="manual.html">'+svg('camera')+'Usar el lector gratuito</a>')+
     '</div>');
   Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(b){
-    b.onclick=function(){E.tipo=b.getAttribute('data-tipo');Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(x){x.setAttribute('aria-pressed',x===b);});$('caraHint').innerHTML=caraTexto();};
+    b.onclick=function(){E.tipo=b.getAttribute('data-tipo');Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(x){x.setAttribute('aria-pressed',x===b);});$('caraHint').innerHTML=caraTexto();$('porDetras').hidden=!(E.tipo==='dni'&&hayLicencia());$('escanear').disabled=E.tipo==='pasaporte'&&!hayLicencia();};
   });
-  if(hayLicencia())$('escanear').onclick=escanear;
+  $('escanear').disabled=E.tipo==='pasaporte'&&!hayLicencia();
+  $('escanear').onclick=escanear;
 }
 
 var docListo=null;
@@ -331,6 +337,7 @@ function prepararDocumento(){
 }
 
 function escanear(){
+  if(E.tipo==='dni'&&E.cara!=='detras')return fotoDelante();
   if(!hayLicencia())return;
   pintar('<div class="panel"><h2>Abriendo la cámara…</h2><p class="lede tight">'+caraTexto()+' Que quepa entera en el marco, sin reflejos ni sombras, y pulsa el botón para hacer la foto.</p></div>');
   prepararDocumento().then(function(){
@@ -353,11 +360,54 @@ function escanear(){
   }).catch(function(e){pError('No se pudo iniciar Regula: '+(e&&e.message||e));});
 }
 
+// DNI por delante, como en Kinky pero sin servidor: foto con la cámara en vivo y lectura en el propio teléfono.
+function porDetras(){E.cara='detras';escanear();}
+function fotoDelante(){
+  if(!window.Camara||!window.Anverso)return pError('No se pudo cargar el lector de la cara delantera.');
+  Camara.foto({marco:'documento',titulo:'Parte delantera del documento',ayuda:'Que se vea entera dentro del marco, con buena luz y sin reflejos.'}).then(function(f){
+    pintar('<div class="panel"><h2>Leyendo el documento…</h2><p class="lede tight" id="ocrProg">Leyendo el número y las fechas…</p></div>');
+    return Anverso.leer(f.lienzo,function(t){var p=$('ocrProg');if(p)p.textContent=t;}).then(function(d){resultadoDelante(d,f);});
+  }).catch(function(e){
+    if(e&&e.message==='cancelado')return documento();
+    pError('No se pudo leer la cara delantera: '+(e&&e.message||e));
+  });
+}
+function resultadoDelante(d,f){
+  var checks=[],datos=[],hoy=new Date();
+  function add(nivel,t,x){checks.push({nivel:nivel,t:t,d:x});}
+  var atras='<button class="btn btn-ghost" onclick="porDetras()">'+svg('camera')+'Leer la parte de atrás</button>';
+  if(!d||(!d.doc&&!d.nac&&!d.cad)){
+    return pintar('<div class="panel"><h2>No se ha podido leer</h2>'+
+      '<p class="lede">No se distinguen el número ni las fechas. Repite la foto más de cerca, con buena luz y sin reflejos, o lee la parte de atrás.</p>'+
+      '<button class="btn btn-gold" onclick="escanear()">'+svg('camera')+'Repetir la foto</button>'+atras+'</div>');
+  }
+  if(d.doc&&d.doc.tipo)datos.push([d.doc.tipo,d.doc.numero]);
+  if(d.pais)datos.push(['País del documento',nombrePais(d.pais)]);
+  if(d.nac)datos.push(['Nacimiento',d.nac.toLocaleDateString('es')]);
+  if(d.cad)datos.push(['Caducidad',d.cad.toLocaleDateString('es')]);
+  else if(d.permanente)datos.push(['Caducidad','Permanente']);
+
+  if(d.doc&&d.doc.tipo)add(d.doc.valido?'ok':'bad','Letra de control del número',d.doc.valido?'Correcta':'No cuadra con el número leído. Si la foto salió movida, repítela.');
+  else add('warn','Número del documento',d.pais&&d.pais!=='ESP'?'Por delante no se comprueba en documentos de '+nombrePais(d.pais):'No se pudo leer');
+  if(d.nac){var edad=edadDe(d.nac);add(edad>=EDAD_MINIMA?'ok':'bad',EDAD_MINIMA+' años o más',edad+' años');}
+  else add('warn','Edad','No se pudo leer la fecha de nacimiento');
+  if(d.permanente)add('ok','Documento en vigor','Válido de forma permanente');
+  else if(d.cad)add(d.cad>hoy?'ok':'bad','Documento en vigor',d.cad>hoy?'Válido hasta '+d.cad.toLocaleDateString('es'):'Caducado');
+  else add('warn','Caducidad','No se pudo leer');
+  if(E.nacionalidad&&d.pais)add(d.pais===E.nacionalidad?'ok':'warn','Coincide con tu nacionalidad',d.pais===E.nacionalidad?'Igual a lo declarado':'Declaraste '+nombrePais(E.nacionalidad)+', el documento es de '+nombrePais(d.pais));
+  var fnd=fechaRegula(E.fnac);
+  if(fnd&&d.nac)add(fnd.getTime()===d.nac.getTime()?'ok':'warn','Coincide con tu fecha de nacimiento',fnd.getTime()===d.nac.getTime()?'Igual a lo declarado':'No coincide con lo que indicaste');
+  if(f&&f.camaraSospechosa)add('bad','Cámara real','Se ha detectado una cámara virtual');
+  veredictoFinal(datos,checks,'Leído de la cara delantera en el propio teléfono. No incluye los controles de las líneas «&lt;&lt;&lt;»: para sumarlos, lee también la parte de atrás.',atras);
+}
+
 // El lector solo sabe leer las líneas «<<<». En el pasaporte están en la página de la foto; en el DNI y las tarjetas, detrás.
 function caraTexto(){
   return E.tipo==='pasaporte'
     ?'Haz la foto de la página del pasaporte que tiene tu foto y las líneas «&lt;&lt;&lt;».'
-    :'Haz la foto de la parte de atrás del DNI o tarjeta, la que tiene las tres líneas «&lt;&lt;&lt;».';
+    :E.cara==='detras'
+      ?'Haz la foto de la parte de atrás del DNI o tarjeta, la que tiene las tres líneas «&lt;&lt;&lt;».'
+      :'Haz la foto de la parte delantera del DNI o tarjeta, la que tiene tu foto.';
 }
 function sinLineas(){
   pintar('<div class="panel"><h2>No se ven las líneas «&lt;&lt;&lt;»</h2>'+
@@ -424,6 +474,11 @@ function resultado(doc){
   var fnd=fechaRegula(E.fnac);
   if(fnd&&fnac)add(fnd.getTime()===fnac.getTime()?'ok':'warn','Coincide con tu fecha de nacimiento',fnd.getTime()===fnac.getTime()?'Igual a lo declarado':'No coincide con lo que indicaste');
 
+  veredictoFinal(datos,checks);
+}
+
+// Pinta el SÍ/NO con su porcentaje, los datos y las comprobaciones (lo usan las dos lecturas).
+function veredictoFinal(datos,checks,nota,extra){
   var mal=checks.some(function(c){return c.nivel==='bad';});
   var total=checks.reduce(function(t,c){return t+(c.nivel==='ok'?1:c.nivel==='warn'?0.5:0);},0);
   var pct=Math.round(100*total/checks.length);if(mal)pct=Math.min(pct,30);
@@ -436,8 +491,9 @@ function resultado(doc){
     '</div>'+
     '<div class="panel"><h2>Datos del documento</h2>'+datos.map(function(d){return '<div class="row"><span class="k">'+esc(d[0])+'</span><span class="v">'+esc(d[1])+'</span></div>';}).join('')+'</div>'+
     '<div class="panel"><h2>Comprobaciones</h2>'+checks.map(function(c){return '<div class="chk"><span class="mk '+c.nivel+'">'+svg(c.nivel==='ok'?'check':c.nivel==='bad'?'cross':'bang')+'</span><div><div class="ct">'+esc(c.t)+'</div><div class="cd">'+esc(c.d)+'</div></div></div>';}).join('')+'</div>'+
-    '<button class="btn btn-plain" onclick="validacion()">Verificar otro documento</button>');
-}
+    (nota?'<div class="notice">'+svg('bang')+'<div>'+nota+'</div></div>':'')+
+    (extra||'')+
+    '<button class="btn btn-plain" onclick="validacion()">Verificar otro documento</button>');}
 
 if(window._accesoOk)validacion();
 </script>
