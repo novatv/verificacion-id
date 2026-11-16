@@ -317,6 +317,8 @@ function documento(){
       '</div>'+
       '<p class="lede tight" id="caraHint" style="margin-top:14px">'+caraTexto()+'</p>'+
       '<button class="btn btn-gold" id="escanear">'+svg('camera')+'Hacer foto del documento</button>'+
+      '<button class="btn btn-ghost" id="subir" onclick="subirDocumento()">Subir una foto del documento</button>'+
+      '<input type="file" id="subirArchivo" accept="image/*" hidden>'+
       '<button class="btn btn-plain" id="porDetras"'+(E.tipo==='dni'&&hayLicencia()?'':' hidden')+' onclick="porDetras()">Leer la parte de atrás (líneas «&lt;&lt;&lt;»)</button>'+
       (hayLicencia()?'':'<a class="btn btn-ghost" href="manual.html">'+svg('camera')+'Usar el lector gratuito</a>')+
     '</div>');
@@ -372,19 +374,39 @@ function escanear(){
 function porDetras(){E.cara='detras';escanear();}
 function fotoDelante(){
   if(!window.Camara||!window.Anverso)return pError('No se pudo cargar el lector de la cara delantera.');
-  Camara.foto({marco:'documento',titulo:'Parte delantera del documento',ayuda:'Que se vea entera dentro del marco, con buena luz y sin reflejos.'}).then(function(f){
-    pintar('<div class="panel"><h2>Leyendo el documento…</h2><p class="lede tight" id="ocrProg">Leyendo el número y las fechas…</p></div>');
-    function enTelefono(){return Anverso.leer(f.lienzo,function(t){var p=$('ocrProg');if(p)p.textContent=t;}).then(function(d){resultadoDelante(d,f);});}
-    if(!SERVIDOR)return enTelefono();
-    // Con servidor: lo lee Regula entero (texto impreso, tipo de documento y seguridad). Si falla o no lo reconoce, se lee en el teléfono.
-    return leerServidor(f).then(function(doc){
-      if(!doc)return enTelefono();
-      resultado(doc);
-    },function(){return enTelefono();});
-  }).catch(function(e){
+  Camara.foto({marco:'documento',titulo:'Parte delantera del documento',ayuda:'Que se vea entera dentro del marco, con buena luz y sin reflejos.'}).then(leerFoto).catch(function(e){
     if(e&&e.message==='cancelado')return documento();
     pError('No se pudo leer la cara delantera: '+(e&&e.message||e));
   });
+}
+function leerFoto(f){
+  pintar('<div class="panel"><h2>Leyendo el documento…</h2><p class="lede tight" id="ocrProg">Leyendo el número y las fechas…</p></div>');
+  function enTelefono(){return Anverso.leer(f.lienzo,function(t){var p=$('ocrProg');if(p)p.textContent=t;}).then(function(d){resultadoDelante(d,f);});}
+  if(!SERVIDOR)return enTelefono();
+  // Con servidor: lo lee Regula entero (texto impreso, tipo de documento y seguridad). Si falla o no lo reconoce, se lee en el teléfono.
+  return leerServidor(f).then(function(doc){
+    if(!doc)return enTelefono();
+    resultado(doc);
+  },function(){return enTelefono();});
+}
+// Subir una foto ya hecha (galería o archivos) en vez de usar la cámara en vivo.
+function subirDocumento(){
+  var inp=$('subirArchivo');if(!inp||!window.Anverso)return;
+  inp.value='';
+  inp.onchange=function(){
+    var a=inp.files&&inp.files[0];if(!a)return;
+    var url=URL.createObjectURL(a),img=new Image();
+    img.onload=function(){
+      var k=Math.min(1,2400/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement('canvas');
+      c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);
+      var f={dataUrl:c.toDataURL('image/jpeg',0.92),lienzo:c,enVivo:false,subida:true,hora:new Date()};
+      Promise.resolve(leerFoto(f)).catch(function(e){pError('No se pudo leer la foto: '+(e&&e.message||e));});
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);pError('Ese archivo no es una foto que se pueda abrir. Sube un JPG o PNG.');};
+    img.src=url;
+  };
+  inp.click();
 }
 function leerServidor(f){
   var ctl=window.AbortController?new AbortController():null, t=setTimeout(function(){if(ctl)ctl.abort();},25000);
@@ -430,6 +452,7 @@ function resultadoDelante(d,f){
   var fnd=fechaRegula(E.fnac);
   if(fnd&&d.nac)add(fnd.getTime()===d.nac.getTime()?'ok':'warn','Coincide con tu fecha de nacimiento',fnd.getTime()===d.nac.getTime()?'Igual a lo declarado':'No coincide con lo que indicaste');
   if(f&&f.camaraSospechosa)add('bad','Cámara real','Se ha detectado una cámara virtual');
+  if(f&&f.subida)add('warn','Foto en vivo','Foto subida desde el teléfono, no hecha en el momento');
   veredictoFinal(datos,checks,'Leído de la cara delantera en el propio teléfono. No incluye los controles de las líneas «&lt;&lt;&lt;»: para sumarlos, lee también la parte de atrás.',atras);
 }
 
