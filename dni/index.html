@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comprobar documento</title>
+<script>
+  // Enlace corto del modo «solo documento»: lleva a la página de prueba conservando lo que venga en el enlace.
+  var q = new URLSearchParams(location.search); q.set('solo', 'dni');
+  location.replace('../prueba/?' + q.toString());
+</script>
+</head>
+<body style="margin:0;background:#0f1014;color:#e9e6df;font:16px system-ui,sans-serif;padding:24px">
+<a href="../prueba/?solo=dni" style="color:#d9b45a">Abrir el comprobador de documentos</a>
+</body>
+</html>

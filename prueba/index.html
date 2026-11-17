@@ -197,6 +197,8 @@ try{
   if(qs.has('servidor'))localStorage.setItem('regula_servidor',qs.get('servidor'));
   SERVIDOR=(localStorage.getItem('regula_servidor')||SERVIDOR).replace(/\/+$/,'');
 }catch(e){}
+// Modo «solo documento» (enlace con ?solo=dni): sin selfie, cuerpo entero ni prueba de vida.
+var SOLO_DNI=false;try{SOLO_DNI=new URLSearchParams(location.search).has('solo');}catch(e){}
 var EDAD_MINIMA=21;
 // Espacio Económico Europeo + Suiza: no necesitan permiso de trabajo (igual que Kinky).
 var EEE={AUT:1,BEL:1,BGR:1,HRV:1,CYP:1,CZE:1,DNK:1,EST:1,FIN:1,FRA:1,DEU:1,GRC:1,HUN:1,IRL:1,ITA:1,LVA:1,LTU:1,LUX:1,MLT:1,NLD:1,POL:1,PRT:1,ROU:1,SVK:1,SVN:1,ESP:1,SWE:1,ISL:1,LIE:1,NOR:1,CHE:1};
@@ -298,7 +300,8 @@ function controles(){
     {ic:'face',t:'Control de identidad',d:'Selfie con tu documento y un código, foto de cuerpo entero y prueba de vida.'},
     {ic:'doc', t:'Verificación del documento',d:'Lectura del DNI o pasaporte con la tecnología de Kinky (Regula).'}
   ];
-  if(!eee) items.push({ic:'work',t:'Control del permiso de trabajo',d:'Tu nacionalidad está fuera del Espacio Económico Europeo.'});
+  if(SOLO_DNI)items.shift();
+  if(!eee&&!SOLO_DNI) items.push({ic:'work',t:'Control del permiso de trabajo',d:'Tu nacionalidad está fuera del Espacio Económico Europeo.'});
   var menor = edad!=null && edad<EDAD_MINIMA;
   pintar(
     '<button class="back" onclick="validacion()">'+svg('arrow')+'Cambiar datos</button>'+
@@ -311,8 +314,10 @@ function controles(){
     '<div class="panel">'+
       items.map(function(i){return '<div class="req"><span class="dot">'+svg(i.ic)+'</span><div><div class="tt">'+i.t+'</div><div class="ds">'+i.d+'</div></div></div>';}).join('')+
     '</div>'+
-    '<button class="btn '+(menor?'btn-plain':'btn-gold')+'" onclick="Identidad.empezar()">Empezar la verificación'+svg('arrowR')+'</button>'+
-    '<button class="btn btn-plain" onclick="documento()">Solo comprobar el documento</button>');
+    (SOLO_DNI
+      ?'<button class="btn '+(menor?'btn-plain':'btn-gold')+'" onclick="documento()">Leer el documento'+svg('arrowR')+'</button>'
+      :'<button class="btn '+(menor?'btn-plain':'btn-gold')+'" onclick="Identidad.empezar()">Empezar la verificación'+svg('arrowR')+'</button>'+
+       '<button class="btn btn-plain" onclick="documento()">Solo comprobar el documento</button>'));
 }
 
 // 3 — Lectura del documento (Regula, con alternativa gratuita)
