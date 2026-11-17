@@ -62,10 +62,20 @@
             '<div style="position:relative;flex:1;overflow:hidden"><video playsinline autoplay muted style="width:100%;height:100%;object-fit:cover' + (facing === 'user' ? ';transform:scaleX(-1)' : '') + '"></video>' + marco + '</div>' +
             '<div style="padding:10px 16px;color:#cbd2e1;font-size:14px;min-height:40px">' + (opts.ayuda || '') + '</div>' +
             '<div style="display:flex;gap:10px;padding:0 16px 22px"><button data-x style="flex:1;padding:14px;border:0;border-radius:12px;background:#2a3350;color:#fff;font-size:16px">Cancelar</button>' +
+            (opts.girar ? '<button data-g aria-label="Cambiar de cámara" style="padding:14px 16px;border:0;border-radius:12px;background:#2a3350;color:#fff;font-size:16px">Girar</button>' : '') +
             '<button data-ok style="flex:2;padding:14px;border:0;border-radius:12px;background:#3b6cff;color:#fff;font-size:16px;font-weight:700">📷 Hacer la foto</button></div>');
           var video = c.querySelector('video'); video.srcObject = stream;
           var sospecha = camaraSospechosa(stream);
           c.querySelector('[data-x]').onclick = function(){ parar(stream); c.remove(); reject(new Error('cancelado')); };
+          var g = c.querySelector('[data-g]');
+          if (g) g.onclick = function(){
+            var otra = facing === 'user' ? 'environment' : 'user';
+            g.disabled = true; parar(stream);
+            pedirCamara(otra).then(function(n){ facing = otra; return n; }, function(){ return pedirCamara(facing); }).then(function(n){
+              stream = n; video.srcObject = n; video.style.transform = facing === 'user' ? 'scaleX(-1)' : '';
+              sospecha = sospecha || camaraSospechosa(n); g.disabled = false;
+            }).catch(function(e){ c.remove(); reject(e); });
+          };
           c.querySelector('[data-ok]').onclick = function(){
             if (!video.videoWidth) return;
             var lienzo = fotograma(video, 1600);

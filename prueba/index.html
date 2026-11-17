@@ -146,6 +146,7 @@
 <script src="paises.js"></script>
 <script src="camara-vida.js"></script>
 <script src="anverso.js"></script>
+<script src="identidad.js"></script>
 </head>
 <body>
 
@@ -239,6 +240,7 @@ function pintar(html){pararBorrado();$('pantalla').innerHTML='<div class="screen
 
 // 1 — Proceso de validación (igual que Kinky: nacionalidad + fecha de nacimiento)
 function validacion(){
+  if(window.Identidad)Identidad.olvidar();E.fotoDoc='';E.retrato='';
   var opts='<option value="" '+(E.nacionalidad?'':'selected')+' disabled>Selecciona tu nacionalidad</option>'+
     (window.PAISES||[]).map(function(p){return '<option value="'+p[0]+'"'+(E.nacionalidad===p[0]?' selected':'')+'>'+esc(p[1])+'</option>';}).join('');
   var f0=(E.fnac||'').split('-');
@@ -293,7 +295,7 @@ function validacion(){
 function controles(){
   var fn=fechaRegula(E.fnac), edad=fn?edadDe(fn):null, eee=!!EEE[E.nacionalidad];
   var items=[
-    {ic:'face',t:'Control de identidad',d:'Confirmamos que eres tú y que el documento es tuyo.'},
+    {ic:'face',t:'Control de identidad',d:'Selfie con tu documento y un código, foto de cuerpo entero y prueba de vida.'},
     {ic:'doc', t:'Verificación del documento',d:'Lectura del DNI o pasaporte con la tecnología de Kinky (Regula).'}
   ];
   if(!eee) items.push({ic:'work',t:'Control del permiso de trabajo',d:'Tu nacionalidad está fuera del Espacio Económico Europeo.'});
@@ -309,7 +311,8 @@ function controles(){
     '<div class="panel">'+
       items.map(function(i){return '<div class="req"><span class="dot">'+svg(i.ic)+'</span><div><div class="tt">'+i.t+'</div><div class="ds">'+i.d+'</div></div></div>';}).join('')+
     '</div>'+
-    '<button class="btn '+(menor?'btn-plain':'btn-gold')+'" onclick="documento()">Empezar la verificación'+svg('arrowR')+'</button>');
+    '<button class="btn '+(menor?'btn-plain':'btn-gold')+'" onclick="Identidad.empezar()">Empezar la verificación'+svg('arrowR')+'</button>'+
+    '<button class="btn btn-plain" onclick="documento()">Solo comprobar el documento</button>');
 }
 
 // 3 — Lectura del documento (Regula, con alternativa gratuita)
@@ -390,12 +393,15 @@ function fotoDelante(){
   });
 }
 function leerFoto(f){
+  E.fotoDoc=f.dataUrl;E.retrato='';
   pintar('<div class="panel"><h2>Leyendo el documento…</h2><p class="lede tight" id="ocrProg">Leyendo el número y las fechas…</p></div>');
   function enTelefono(){return Anverso.leer(f.lienzo,function(t){var p=$('ocrProg');if(p)p.textContent=t;}).then(function(d){resultadoDelante(d,f);});}
   if(!SERVIDOR)return enTelefono();
   // Con servidor: lo lee Regula entero (texto impreso, tipo de documento y seguridad). Si falla o no lo reconoce, se lee en el teléfono.
   return leerServidor(f).then(function(doc){
     if(!doc)return enTelefono();
+    if(doc.calidad)return pintar('<div class="panel"><h2>Repite la foto</h2><p class="lede">La foto '+esc(doc.calidad.join(' y '))+'. Hazla con buena luz, sin reflejos y con el documento entero dentro del marco.</p>'+
+      '<button class="btn btn-gold" onclick="escanear()">'+svg('camera')+'Repetir la foto</button></div>');
     resultado(doc);
   },function(){return enTelefono();});
 }
@@ -425,9 +431,16 @@ function leerServidor(f){
   }).then(function(r){clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(j){
     var lista=(j.ContainerList&&j.ContainerList.List)||[];
     function cont(k){for(var i=0;i<lista.length;i++)if(lista[i][k])return lista[i][k];return null;}
+    // Calidad de la foto, como hace Regula antes de aceptar la captura: 0 reflejos, 1 enfoque, 2 resolución, 4 perspectiva, 5 bordes.
+    var qa=cont('ImageQualityCheckList'), MAL={0:'tiene reflejos',1:'está borrosa',2:'tiene poca resolución: acércate más',4:'está muy inclinada',5:'el documento sale cortado'};
+    var fallos=((qa&&qa.List)||[]).filter(function(x){return x.result===0&&MAL[x.type];}).map(function(x){return MAL[x.type];});
+    if(fallos.length)return {calidad:fallos};
     var texto=cont('Text'), campos=(texto&&texto.fieldList)||[];
     if(!campos.length)return null;
     var cand=cont('OneCandidate'), st=cont('Status')||{};
+    var imgs=cont('Images'), ret='';
+    ((imgs&&imgs.fieldList)||[]).forEach(function(c){if(c.fieldType===201&&c.valueList&&c.valueList[0]&&c.valueList[0].value)ret=c.valueList[0].value;});
+    E.retrato=ret;
     return {
       servidor:true,
       nombreDoc:cand&&cand.DocumentName||'',
@@ -552,24 +565,49 @@ function resultado(doc){
 }
 
 // Pinta el SÍ/NO con su porcentaje, los datos y las comprobaciones (lo usan las dos lecturas).
-function veredictoFinal(datos,checks,nota,extra){
+function notaDe(checks){
   var mal=checks.some(function(c){return c.nivel==='bad';});
   var total=checks.reduce(function(t,c){return t+(c.nivel==='ok'?1:c.nivel==='warn'?0.5:0);},0);
   var pct=Math.round(100*total/checks.length);if(mal)pct=Math.min(pct,30);
-  var si=!mal&&pct>=70;
+  return {pct:pct,si:!mal&&pct>=70};
+}
+// Con el control de identidad en marcha, un documento válido no se enseña todavía: sigue a la comparación de caras.
+function veredictoFinal(datos,checks,nota,extra){
+  if(window.Identidad&&Identidad.enCurso()&&notaDe(checks).si)return Identidad.conDocumento({datos:datos,checks:checks,nota:nota,fotoDoc:E.fotoDoc,retrato:E.retrato});
+  pintarVeredicto(datos,checks,nota,extra,{});
+}
+function pintarVeredicto(datos,checks,nota,extra,op){
+  op=op||{};
+  var n=notaDe(checks),pct=n.pct,si=n.si;
+  E.fotoDoc='';E.retrato='';
+  var cap=si?(op.identidad?'Identidad y documento verificados':'Documento leído y coherente con tus datos'):(op.identidad?'No se puede dar por verificada':'No se puede dar por válido');
   pintar(
     '<div class="verdict '+(si?'yes':'no')+'">'+
       '<div class="word">'+(si?'SÍ':'NO')+'</div>'+
-      '<div><div class="pct">'+pct+'%</div><div class="cap">'+(si?'Documento leído y coherente con tus datos':'No se puede dar por válido')+'</div></div>'+
+      '<div><div class="pct">'+pct+'%</div><div class="cap">'+cap+'</div></div>'+
       '<div class="bar" style="width:'+pct+'%"></div>'+
     '</div>'+
+    '<div id="registro"></div>'+
     '<div class="panel"><h2>Datos del documento</h2>'+datos.map(function(d){return '<div class="row"><span class="k">'+esc(d[0])+'</span><span class="v">'+esc(d[1])+'</span></div>';}).join('')+'</div>'+
     '<div class="panel"><h2>Comprobaciones</h2>'+checks.map(function(c){return '<div class="chk"><span class="mk '+c.nivel+'">'+svg(c.nivel==='ok'?'check':c.nivel==='bad'?'cross':'bang')+'</span><div><div class="ct">'+esc(c.t)+'</div><div class="cd">'+esc(c.d)+'</div></div></div>';}).join('')+'</div>'+
     (nota?'<div class="notice">'+svg('bang')+'<div>'+nota+'</div></div>':'')+
     (extra||'')+
-    '<button class="btn btn-plain" onclick="validacion()">Verificar otro documento</button>'+
+    '<button class="btn btn-plain" onclick="validacion()">'+(op.identidad?'Nueva verificación':'Verificar otro documento')+'</button>'+
     '<p class="lede tight" style="text-align:center;margin-top:14px">Este resultado se borra en <b id="borraEn">'+BORRAR_SEG+'</b> s</p>');
-  borrarEn();}
+  borrarEn();
+  // Verificación completa aprobada: se anota SOLO «21 años o más» y la fecha (caduca a los 180 días). Ni foto ni datos del documento.
+  var mayor=checks.some(function(c){return c.nivel==='ok'&&c.t===EDAD_MINIMA+' años o más';});
+  if(op.identidad&&si&&mayor&&SERVIDOR){
+    fetch(SERVIDOR+'/registro',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mayor21:true})})
+      .then(function(r){return r.ok?r.json():null;}).then(function(j){
+        var el=$('registro');if(!j||!j.id||!el)return;
+        el.innerHTML='<div class="panel"><h2>Verificación anotada</h2>'+
+          '<div class="row"><span class="k">Número</span><span class="v">'+esc(j.id)+'</span></div>'+
+          '<div class="row"><span class="k">Válida hasta</span><span class="v">'+esc(j.caduca.split('-').reverse().join('/'))+'</span></div>'+
+          '<p class="lede tight" style="margin-top:10px">Solo se guarda esto: «'+EDAD_MINIMA+' años o más» y la fecha. Ni la foto ni los datos del documento.</p></div>';
+      }).catch(function(){});
+  }
+}
 
 if(window._accesoOk)validacion();
 </script>
