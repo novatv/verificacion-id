@@ -39,7 +39,7 @@
       '<button class="btn btn-plain" onclick="Identidad.cancelar()">Empezar de nuevo</button></div>');
     $('reint').onclick = reintentar;
   }
-  function total(){ return I.permiso ? 6 : 4; }
+  function total(){ return I.permiso ? 5 : 4; }
   function alCancelar(reintentar){ return function(e){ if (e && e.message === 'cancelado') return reintentar(); fallo('No se pudo usar la cámara', (e && e.message) || String(e), reintentar); }; }
 
   // 1 — Selfie con el documento y un código escrito a mano
@@ -111,14 +111,13 @@
   // 4 — Documento: lo lee index.html y vuelve aquí por Identidad.conDocumento
   function pDocumento(){ documento(); }
 
-  // 5 y 6 — Permiso de residencia o de trabajo (solo fuera de UE/EEE/Suiza). No se lee solo: queda para revisión.
-  function pPermiso(lado){
-    paso(lado === 1 ? 5 : 6, total(), 'Permiso de residencia o de trabajo',
-      'Tu nacionalidad está fuera del Espacio Económico Europeo. Haz la foto de la parte <b>' + (lado === 1 ? 'delantera' : 'trasera') + '</b> del permiso.',
+  // 5 — Permiso de residencia o de trabajo (solo fuera de UE/EEE/Suiza): una sola foto, la parte delantera. No se lee solo: queda para revisión.
+  function pPermiso(){
+    paso(5, total(), 'Permiso de residencia o de trabajo',
+      'Tu nacionalidad está fuera del Espacio Económico Europeo. Haz la foto de la parte <b>delantera</b> del permiso.',
       'Hacer la foto', function(){
-        Camara.foto({ marco: 'documento', titulo: 'Permiso · ' + (lado === 1 ? 'delante' : 'detrás'), ayuda: 'Que se vea entero dentro del marco.' })
-          .then(function(f){ I['permiso' + lado] = f; if (lado === 1) pPermiso(2); else analizar(); })
-          .catch(alCancelar(function(){ pPermiso(lado); }));
+        Camara.foto({ marco: 'documento', titulo: 'Permiso de residencia o de trabajo', ayuda: 'Que se vea entero dentro del marco.' })
+          .then(function(f){ I.permiso1 = f; analizar(); }).catch(alCancelar(pPermiso));
       });
   }
 
@@ -179,7 +178,7 @@
       var c = r[2];
       if (!c || c.sinCara) add('warn', 'Foto de cuerpo entero', 'No se distingue la cara para compararla');
       else add(c.misma ? 'ok' : 'bad', 'Foto de cuerpo entero', c.misma ? 'Eres la misma persona (' + c.pct + ' %)' + quien(c) : 'La cara no coincide (' + c.pct + ' %)');
-      if (I.permiso) add('warn', 'Permiso de residencia o de trabajo', 'Fotografiado por las dos caras; lo tiene que revisar una persona');
+      if (I.permiso) add('warn', 'Permiso de residencia o de trabajo', 'Fotografiado por delante; lo tiene que revisar una persona');
       if ((I.selfie.camaraSospechosa || I.cuerpo.camaraSospechosa || I.vida.sospecha)) add('bad', 'Cámara real', 'Se ha detectado una cámara virtual');
       var hecho = I; I = null;   // las fotos dejan de estar en memoria en cuanto hay veredicto
       pintarVeredicto(base.datos, checks, base.nota, '', { identidad: true, carasRegula: !!hecho.caras });
@@ -194,7 +193,7 @@
       pSelfie();
     },
     // index.html llama aquí cuando el documento se ha leído y es válido
-    conDocumento: function(doc){ I.doc = doc; if (I.permiso) pPermiso(1); else analizar(); },
+    conDocumento: function(doc){ I.doc = doc; if (I.permiso) pPermiso(); else analizar(); },
     olvidar: function(){ I = null; },
     cancelar: function(){ I = null; validacion(); },
   };
