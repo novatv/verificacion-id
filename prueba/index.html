@@ -432,7 +432,7 @@ function subirDocumento(){
 function leerServidor(f){
   var ctl=window.AbortController?new AbortController():null, t=setTimeout(function(){if(ctl)ctl.abort();},25000);
   return fetch(SERVIDOR+'/api/process',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctl?ctl.signal:undefined,
-    body:JSON.stringify({processParam:{scenario:'FullProcess',dateFormat:'dd.MM.yyyy'},List:[{ImageData:{image:f.dataUrl.split(',')[1]},light:6,page_idx:0}]})
+    body:JSON.stringify({processParam:{scenario:'FullAuth',dateFormat:'dd.MM.yyyy',authParams:{checkLiveness:true,livenessParams:{checkED:true,checkBlackAndWhiteCopy:true,checkMLI:false,checkHolo:false,checkOVI:false,checkDynaprint:false,checkGeometry:false}}},List:[{ImageData:{image:f.dataUrl.split(',')[1]},light:6,page_idx:0}]})
   }).then(function(r){clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(j){
     var lista=(j.ContainerList&&j.ContainerList.List)||[];
     function cont(k){for(var i=0;i<lista.length;i++)if(lista[i][k])return lista[i][k];return null;}
@@ -446,11 +446,19 @@ function leerServidor(f){
     var imgs=cont('Images'), ret='';
     ((imgs&&imgs.fieldList)||[]).forEach(function(c){if(c.fieldType===201&&c.valueList&&c.valueList[0]&&c.valueList[0].value)ret=c.valueList[0].value;});
     E.retrato=ret;
+    // Seguridad por apartados: 2097152 = documento físico (40 pantalla, 53 fotocopia), 4 = dibujo impreso, 512 = foto del titular.
+    var aut=cont('AuthenticityCheckList'), seg={};
+    ((aut&&aut.List)||[]).forEach(function(a){
+      if(a.Type===2097152){seg.fisico=a.Result;(a.List||[]).forEach(function(e){if(e.ElementResult===0)seg.motivo=e.ElementType===53?'fotocopia':'pantalla';});}
+      else if(a.Type===4)seg.dibujo=a.Result;
+      else if(a.Type===512)seg.foto=a.Result;
+    });
     return {
       servidor:true,
       nombreDoc:cand&&cand.DocumentName||'',
       text:{getFieldValue:function(c){for(var i=0;i<campos.length;i++)if(campos[i].fieldType===c&&campos[i].value)return campos[i].value;return '';}},
-      status:{overallStatus:st.overallStatus,detalle:st.detailsOptical||{}}
+      status:{overallStatus:st.overallStatus,detalle:st.detailsOptical||{}},
+      seg:seg
     };
   });
 }
@@ -553,7 +561,10 @@ function resultado(doc){
     if(doc.nombreDoc)datos.unshift(['Documento',doc.nombreDoc]);
     add(det.docType===1?'ok':'warn','Tipo de documento reconocido',doc.nombreDoc||'No identificado');
     add(nivel(det.text),'Texto del documento',det.text===1?'Coherente':det.text===0?'Hay datos que no cuadran':'No comprobado del todo');
-    add(nivel(det.security),'Elementos de seguridad',det.security===1?'Correctos':det.security===0?'Regula no los da por buenos':'No comprobados en esta foto');
+    var seg=doc.seg||{};
+    add(seg.fisico===1?'ok':seg.fisico===0?'bad':'warn','Documento físico',seg.fisico===1?'No es foto de pantalla ni fotocopia':seg.fisico===0?(seg.motivo==='fotocopia'?'Parece una fotocopia':'Parece una foto hecha a una pantalla'):'No se pudo comprobar en esta foto');
+    add(seg.dibujo===1?'ok':'warn','Dibujo de seguridad',seg.dibujo===1?'Coincide con el modelo oficial':seg.dibujo===0?'No coincide del todo con el modelo oficial: repite la foto con buena luz':'No comprobado en esta foto');
+    if(seg.foto!==undefined)add(seg.foto===1?'ok':seg.foto===0?'bad':'warn','Foto del titular',seg.foto===1?'Impresa en el documento, sin señales de cambio':seg.foto===0?'Hay señales de que la foto está cambiada':'No comprobada');
   }else
   add(estado===1?'ok':estado===0?'bad':'warn','Dígitos de control del documento',estado===1?'Correctos':estado===0?'No cuadran':'No comprobados del todo');
   if(fnac){var edad=edadDe(fnac);add(edad>=EDAD_MINIMA?'ok':'bad',EDAD_MINIMA+' años o más',edad+' años');}
