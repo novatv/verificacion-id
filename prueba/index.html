@@ -225,7 +225,17 @@ function nombrePais(c){var p=(window.PAISES||[]).find(function(x){return x[0]===
 function hayLicencia(){return !!(CFG.license||CFG.documentServiceUrl);}
 function edadDe(f){var h=new Date(),e=h.getFullYear()-f.getFullYear();if(h.getMonth()<f.getMonth()||(h.getMonth()===f.getMonth()&&h.getDate()<f.getDate()))e--;return e;}
 function fechaRegula(v){if(!v)return null;var m=v.match(/(\d{4})-(\d{2})-(\d{2})/)||v.match(/(\d{2})[./](\d{2})[./](\d{4})/);if(!m)return null;return m[1].length===4?new Date(+m[1],+m[2]-1,+m[3]):new Date(+m[3],+m[2]-1,+m[1]);}
-function pintar(html){$('pantalla').innerHTML='<div class="screen">'+html+'</div>';window.scrollTo(0,0);}
+// El resultado se borra solo a los 30 segundos: se vacían los datos y se vuelve al principio.
+var BORRAR_SEG=30,_borrado=null;
+function pararBorrado(){if(_borrado){clearInterval(_borrado);_borrado=null;}}
+function borrarEn(){
+  pararBorrado();var q=BORRAR_SEG,el=$('borraEn');
+  _borrado=setInterval(function(){
+    q--;if(el)el.textContent=q;
+    if(q<=0){pararBorrado();E={tipo:'dni',nacionalidad:'',fnac:''};validacion();}
+  },1000);
+}
+function pintar(html){pararBorrado();$('pantalla').innerHTML='<div class="screen">'+html+'</div>';window.scrollTo(0,0);}
 
 // 1 — Proceso de validación (igual que Kinky: nacionalidad + fecha de nacimiento)
 function validacion(){
@@ -557,7 +567,9 @@ function veredictoFinal(datos,checks,nota,extra){
     '<div class="panel"><h2>Comprobaciones</h2>'+checks.map(function(c){return '<div class="chk"><span class="mk '+c.nivel+'">'+svg(c.nivel==='ok'?'check':c.nivel==='bad'?'cross':'bang')+'</span><div><div class="ct">'+esc(c.t)+'</div><div class="cd">'+esc(c.d)+'</div></div></div>';}).join('')+'</div>'+
     (nota?'<div class="notice">'+svg('bang')+'<div>'+nota+'</div></div>':'')+
     (extra||'')+
-    '<button class="btn btn-plain" onclick="validacion()">Verificar otro documento</button>');}
+    '<button class="btn btn-plain" onclick="validacion()">Verificar otro documento</button>'+
+    '<p class="lede tight" style="text-align:center;margin-top:14px">Este resultado se borra en <b id="borraEn">'+BORRAR_SEG+'</b> s</p>');
+  borrarEn();}
 
 if(window._accesoOk)validacion();
 </script>
